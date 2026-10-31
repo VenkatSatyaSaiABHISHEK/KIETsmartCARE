@@ -1,147 +1,124 @@
-import { PhoneCall, ShieldAlert, Users, CheckCircle2, AlertTriangle, ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+"use client";
 
-export default function OfficerDashboard() {
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { OfficerHeader } from "./components/OfficerHeader";
+import { DateFilterBar } from "./components/DateFilterBar";
+import { KPICardsGrid } from "./components/KPICardsGrid";
+import { DashboardCharts } from "./components/DashboardCharts";
+import { OfficerService } from "@/lib/officer/service";
+import {
+  OfficerKPIs,
+  DailyVisitsDataPoint,
+  RecoveryDistributionDataPoint,
+  ProblemCategoryDataPoint,
+  AdherenceTrendDataPoint,
+  FilterParams,
+} from "@/lib/officer/types";
+import { AlertOctagon, ArrowRight, ShieldAlert, Sparkles } from "lucide-react";
+
+export default function OfficerDashboardPage() {
+  const [filters, setFilters] = useState<FilterParams>({
+    dateRange: "30days",
+    branch: "all",
+    year: "all",
+  });
+
+  const [kpis, setKpis] = useState<OfficerKPIs | null>(null);
+  const [dailyVisits, setDailyVisits] = useState<DailyVisitsDataPoint[]>([]);
+  const [recoveryDistribution, setRecoveryDistribution] = useState<RecoveryDistributionDataPoint[]>([]);
+  const [problemCategories, setProblemCategories] = useState<ProblemCategoryDataPoint[]>([]);
+  const [adherenceTrend, setAdherenceTrend] = useState<AdherenceTrendDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const [kpiRes, dailyRes, recRes, catRes, adhRes] = await Promise.all([
+        OfficerService.getKPIs(filters),
+        OfficerService.getDailyVisitsSeries(filters),
+        OfficerService.getRecoveryDistribution(filters),
+        OfficerService.getProblemCategories(filters),
+        OfficerService.getAdherenceTrend(filters),
+      ]);
+      setKpis(kpiRes);
+      setDailyVisits(dailyRes);
+      setRecoveryDistribution(recRes);
+      setProblemCategories(catRes);
+      setAdherenceTrend(adhRes);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [filters]);
+
   return (
-    <div className="space-y-8">
-      {/* Executive Welcome & Campus Health Posture */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Campus Health Surveillance Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Real-time aggregate health metrics, flagged recovery escalations, and telephonic outreach management.
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
-            Surveillance System Live
-          </Badge>
-          <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200">
-            Auditing Enforced
-          </Badge>
+    <div className="space-y-6">
+      {/* 1. Header */}
+      <OfficerHeader
+        title="Campus Health Surveillance Executive Dashboard"
+        subtitle="Aggregate epidemiological monitoring, adherence metrics, and telephonic escalation management"
+        urgentCount={kpis?.open_red_alerts || 0}
+      />
+
+      <div className="px-6 space-y-6 max-w-7xl mx-auto">
+        {/* Urgent Action Banner if Red Alerts Exist */}
+        {kpis && kpis.open_red_alerts > 0 && (
+          <div className="rounded-2xl border border-red-300 bg-red-50/70 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-red-950">
+            <div className="flex items-center space-x-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-600 text-white shrink-0 shadow-md shadow-red-500/20">
+                <AlertOctagon className="h-6 w-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-red-900">
+                  {kpis.open_red_alerts} Urgent Red Alerts Awaiting Telephonic Contact
+                </h4>
+                <p className="text-xs text-red-800">
+                  Students have reported &ldquo;Worse&rdquo;, &ldquo;Same&rdquo;, or adverse side effects. Protocol requires immediate outreach.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/officer/alerts"
+              className="inline-flex items-center justify-center rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-600/20 transition-all shrink-0"
+            >
+              Open Alerts Queue <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+
+        {/* 2. Date Range & Parameter Filter Bar */}
+        <DateFilterBar
+          filters={filters}
+          setFilters={setFilters}
+          onRefresh={loadDashboardData}
+          isLoading={isLoading}
+        />
+
+        {/* 3. Big Metric Cards (KPIs) */}
+        <KPICardsGrid kpis={kpis} isLoading={isLoading} />
+
+        {/* 4. Enterprise Recharts (Lines, Donut, Bar, Area) */}
+        <DashboardCharts
+          dailyVisits={dailyVisits}
+          recoveryDistribution={recoveryDistribution}
+          problemCategories={problemCategories}
+          adherenceTrend={adherenceTrend}
+        />
+
+        {/* Privacy by Design Notice */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs text-xs text-slate-500 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <ShieldAlert className="h-4 w-4 text-[#2563EB]" />
+            <span>
+              <strong>Surveillance Architecture Note:</strong> All figures are strictly aggregated server-side via SQL views (<code>view_officer_daily_visits</code>, <code>view_officer_recovery_distribution</code>) and security-definer RPCs. Raw consultation notes are never transferred to the browser.
+            </span>
+          </div>
         </div>
       </div>
-
-      {/* Aggregate Counts By Default (Privacy By Design) */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-slate-200 bg-white shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Active Prescriptions</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">42</div>
-            <p className="mt-1 text-xs text-slate-500">Students undergoing treatment</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-red-100 bg-white shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-red-700">Flagged Red Alerts</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-700">3</div>
-            <p className="mt-1 text-xs text-red-600/80">Require immediate telephonic contact</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-amber-100 bg-white shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-amber-700">No-Response Checks (24h)</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-800">5</div>
-            <p className="mt-1 text-xs text-amber-700/80">Pending student self-report</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-slate-200 bg-white shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">Recovery Rate (7-Day)</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-700">92.4%</div>
-            <p className="mt-1 text-xs text-slate-500">Self-reported recovery outcome</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Flagged Cases Queue */}
-      <Card className="border-slate-200 bg-white shadow-sm">
-        <CardHeader className="border-b border-slate-100 pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <CardTitle className="text-lg font-semibold text-slate-900">
-                Flagged Cases Requiring Outreach
-              </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
-                Privacy Notice: Only problem category is displayed. Full clinical notes remain sealed. Every view event is written to audit_logs.
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="border-indigo-300 text-indigo-700 w-fit">
-              Read-Only Clinical Scope
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="divide-y divide-slate-100">
-            <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <Badge variant="destructive" className="text-[10px] uppercase font-bold tracking-wider">
-                    Red Alert
-                  </Badge>
-                  <span className="font-semibold text-slate-900">Roll: 2200290120019</span>
-                  <span className="text-xs text-slate-500">&bull; Tagore Hostel Room 302</span>
-                </div>
-                <p className="text-sm text-slate-700">
-                  Category: <span className="font-medium text-slate-900">Acute Viral Illness</span> &bull; Reason: Reported outcome &quot;Worse&quot; after 3-day course
-                </p>
-                <p className="text-xs text-slate-400">Prescribing Doctor: Dr. Sharma &bull; Reported 2 hours ago</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-                  <PhoneCall className="mr-2 h-3.5 w-3.5" /> Call Student
-                </Button>
-                <Button size="sm" variant="outline" className="border-slate-200 text-slate-700">
-                  Log Outcome <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <Badge variant="destructive" className="text-[10px] uppercase font-bold tracking-wider bg-rose-600">
-                    Side Effect
-                  </Badge>
-                  <span className="font-semibold text-slate-900">Roll: 2100290100112</span>
-                  <span className="text-xs text-slate-500">&bull; Day Scholar (Ghaziabad)</span>
-                </div>
-                <p className="text-sm text-slate-700">
-                  Category: <span className="font-medium text-slate-900">Bacterial Infection</span> &bull; Reason: Student flagged unexpected rash & nausea
-                </p>
-                <p className="text-xs text-slate-400">Prescribing Doctor: Dr. Verma &bull; Reported 45 mins ago</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-                  <PhoneCall className="mr-2 h-3.5 w-3.5" /> Call Student
-                </Button>
-                <Button size="sm" variant="outline" className="border-slate-200 text-slate-700">
-                  Log Outcome <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
