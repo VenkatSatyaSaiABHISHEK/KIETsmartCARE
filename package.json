@@ -1,0 +1,26 @@
+{
+  "name": "kiet-smart-care",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Campus healthcare system for KIET Group of Institutions, Korangi, India",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=@kiet-smart-care/web run dev",
+    "dev:student": "cd apps/student && npx expo start",
+    "build:web": "npm --workspace=@kiet-smart-care/web run build",
+    "build:shared": "npm --workspace=@kiet-smart-care/shared run build",
+    "lint:web": "npm --workspace=@kiet-smart-care/web run lint"
+  },
+  "keywords": [
+    "kiet",
+    "campus-healthcare",
+    "nextjs",
+    "expo",
+    "supabase"
+  ],
+  "author": "KIET Healthcare Engineering Team",
+  "license": "UNLICENSED"
+}
