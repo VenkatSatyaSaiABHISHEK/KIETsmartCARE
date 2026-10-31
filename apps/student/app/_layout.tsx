@@ -11,7 +11,14 @@ export default function RootLayout() {
           headerShown: false,
           contentStyle: { backgroundColor: '#ffffff' },
         }}
-      />
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="consent" />
+        <Stack.Screen name="setup" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="report-problem" />
+      </Stack>
     </SafeAreaProvider>
   );
 }
