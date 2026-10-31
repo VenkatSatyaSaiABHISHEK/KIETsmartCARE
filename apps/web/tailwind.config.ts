@@ -12,6 +12,17 @@ const config: Config = {
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        doctor: {
+          panel: "#F1F5FB",
+          navy: "#0F1B3D",
+          blue: "#1D4ED8",
+          blueHover: "#1E40AF",
+          light: "#F8FAFC",
+          border: "#E2E8F0",
+          alertBg: "#FEF2F2",
+          alertBorder: "#FCA5A5",
+          alertText: "#991B1B",
+        },
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
@@ -43,15 +54,9 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        chart: {
-          "1": "hsl(var(--chart-1))",
-          "2": "hsl(var(--chart-2))",
-          "3": "hsl(var(--chart-3))",
-          "4": "hsl(var(--chart-4))",
-          "5": "hsl(var(--chart-5))",
-        },
       },
       borderRadius: {
+        "12": "12px",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
