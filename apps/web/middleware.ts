@@ -39,8 +39,8 @@ export async function middleware(request: NextRequest) {
   const roleCookie = request.cookies.get('kiet_user_role')?.value;
 
   // Route protection rules:
-  // - /admin pages only open for the admin role
-  if (pathname.startsWith('/admin')) {
+  // - /admin pages only open for the admin role (except /admin/login)
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
     if (roleCookie && roleCookie !== 'admin') {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = roleCookie === 'doctor' ? '/doctor' : '/officer';
