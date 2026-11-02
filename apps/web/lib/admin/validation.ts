@@ -21,6 +21,8 @@ export const staffCreateSchema = z.object({
   role: z.enum(["doctor", "officer"], {
     errorMap: () => ({ message: "Role must be either doctor or officer" }),
   }),
+  qualification: z.string().optional(),
+  designation: z.string().optional(),
 });
 
 export const staffUpdateSchema = z.object({

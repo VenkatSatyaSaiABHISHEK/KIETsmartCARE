@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -8,8 +8,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { PhoneCall, AlertTriangle, X, ShieldAlert, HeartPulse } from 'lucide-react-native';
-import { EMERGENCY_CONTACTS } from '@kiet-smart-care/shared';
+import { EMERGENCY_CONTACTS } from '../constants/shared';
 
 interface EmergencyModalProps {
   visible: boolean;
@@ -17,6 +16,27 @@ interface EmergencyModalProps {
 }
 
 export function EmergencyModal({ visible, onClose }: EmergencyModalProps) {
+  const [contacts, setContacts] = useState({
+    clinic: { label: 'College Campus Clinic', phone: EMERGENCY_CONTACTS.CAMPUS_CLINIC, subtitle: 'KIET Central Health Centre' },
+    officer: { label: 'Campus Health Officer', phone: EMERGENCY_CONTACTS.HEALTH_OFFICER, subtitle: 'Adherence & Health Surveillance' },
+    doctor: { label: 'Campus OPD Doctor', phone: EMERGENCY_CONTACTS.OPD_DOCTOR, subtitle: 'Medical Consultations & Urgent Care' },
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/clinic/emergency-contacts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data?.contacts) {
+          setContacts(data.contacts);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [visible]);
+
   const handleCall = (phoneNumber: string) => {
     const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
     const url = Platform.OS === 'ios' ? `telprompt:${cleanNumber}` : `tel:${cleanNumber}`;
@@ -34,61 +54,63 @@ export function EmergencyModal({ visible, onClose }: EmergencyModalProps) {
         <View style={styles.sheetContainer}>
           {/* Header */}
           <View style={styles.sheetHeader}>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.alertIconBadge}>
-                <ShieldAlert color="#ffffff" size={20} />
-              </View>
-              <div>
-                <Text style={styles.sheetTitle}>Campus Emergency Helpline</Text>
-                <Text style={styles.sheetSub}>KIET Group of Institutions, Korangi</Text>
-              </div>
+            <View>
+              <Text style={styles.sheetTitle}>Campus Emergency Helpline</Text>
+              <Text style={styles.sheetSub}>KIET Group of Institutions &bull; Ghaziabad</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <X color="#666666" size={20} />
+              <Text style={styles.closeText}>&times;</Text>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.emergencyNotice}>
-            For urgent acute symptoms, chest pain, breathlessness, or immediate assistance, tap below to contact campus medical staff immediately.
+            Direct on-campus health emergency responders. Tap below to call directly:
           </Text>
 
           {/* Quick Tap-To-Call Emergency Buttons */}
           <View style={styles.actionsList}>
             <TouchableOpacity
-              style={[styles.callCard, styles.campusClinicCard]}
-              onPress={() => handleCall(EMERGENCY_CONTACTS.CAMPUS_HEALTH_CENTRE)}
-              activeOpacity={0.85}
+              style={styles.callRow}
+              onPress={() => handleCall(contacts.clinic.phone)}
+              activeOpacity={0.8}
             >
-              <View style={styles.callIconBox}>
-                <HeartPulse color="#ffffff" size={22} />
+              <View>
+                <Text style={styles.callLabel}>{contacts.clinic.label}</Text>
+                <Text style={styles.callPhone}>{contacts.clinic.phone}</Text>
+                <Text style={styles.contactSubtitle}>{contacts.clinic.subtitle}</Text>
               </View>
-              <View style={styles.callCardContent}>
-                <Text style={styles.callCardTitle}>Campus Health Centre OPD</Text>
-                <Text style={styles.callCardNumber}>{EMERGENCY_CONTACTS.CAMPUS_HEALTH_CENTRE}</Text>
-                <Text style={styles.callCardTag}>24/7 Campus Medical Room</Text>
-              </View>
-              <PhoneCall color="#ffffff" size={18} />
+              <Text style={styles.callActionText}>Call Clinic &rarr;</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.callCard, styles.ambulanceCard]}
-              onPress={() => handleCall(EMERGENCY_CONTACTS.AMBULANCE)}
-              activeOpacity={0.85}
+              style={styles.callRow}
+              onPress={() => handleCall(contacts.officer.phone)}
+              activeOpacity={0.8}
             >
-              <View style={[styles.callIconBox, { backgroundColor: '#b91c1c' }]}>
-                <AlertTriangle color="#ffffff" size={20} />
+              <View>
+                <Text style={styles.callLabel}>{contacts.officer.label}</Text>
+                <Text style={styles.callPhone}>{contacts.officer.phone}</Text>
+                <Text style={styles.contactSubtitle}>{contacts.officer.subtitle}</Text>
               </View>
-              <View style={styles.callCardContent}>
-                <Text style={styles.callCardTitle}>Emergency Ambulance</Text>
-                <Text style={styles.callCardNumber}>Dial {EMERGENCY_CONTACTS.AMBULANCE}</Text>
-                <Text style={styles.callCardTag}>Government Emergency Medical Service</Text>
+              <Text style={styles.callActionText}>Call Officer &rarr;</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.callRow}
+              onPress={() => handleCall(contacts.doctor.phone)}
+              activeOpacity={0.8}
+            >
+              <View>
+                <Text style={styles.callLabel}>{contacts.doctor.label}</Text>
+                <Text style={styles.callPhone}>{contacts.doctor.phone}</Text>
+                <Text style={styles.contactSubtitle}>{contacts.doctor.subtitle}</Text>
               </View>
-              <PhoneCall color="#ffffff" size={18} />
+              <Text style={styles.callActionText}>Call Doctor &rarr;</Text>
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Dismiss</Text>
+          <TouchableOpacity onPress={onClose} style={styles.dismissBtn}>
+            <Text style={styles.dismissText}>Dismiss</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -99,116 +121,93 @@ export function EmergencyModal({ visible, onClose }: EmergencyModalProps) {
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 24,
-    paddingBottom: 36,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  alertIconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#dc2626',
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   sheetTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    letterSpacing: -0.3,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#121212',
   },
   sheetSub: {
     fontSize: 12,
-    color: '#666666',
+    color: '#555555',
+    marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
-    borderRadius: 20,
-    backgroundColor: '#f4f4f5',
+    padding: 4,
+  },
+  closeText: {
+    fontSize: 24,
+    color: '#555555',
+    lineHeight: 24,
   },
   emergencyNotice: {
     fontSize: 13,
-    color: '#52525b',
+    color: '#555555',
     lineHeight: 18,
     marginBottom: 20,
   },
   actionsList: {
     gap: 12,
-    marginBottom: 20,
   },
-  callCard: {
+  callRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    backgroundColor: '#FAFAFA',
   },
-  campusClinicCard: {
-    backgroundColor: '#1d4ed8',
+  callLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#121212',
   },
-  ambulanceCard: {
-    backgroundColor: '#dc2626',
+  callPhone: {
+    fontSize: 12,
+    color: '#121212',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '600',
+    marginTop: 2,
   },
-  callIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: '#1e40af',
+  contactSubtitle: {
+    fontSize: 11,
+    color: '#737373',
+    marginTop: 1,
+  },
+  callActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#991B1B',
+  },
+  dismissBtn: {
+    marginTop: 20,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
   },
-  callCardContent: {
-    flex: 1,
-  },
-  callCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  callCardNumber: {
+  dismissText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#ffffff',
-    opacity: 0.9,
-    marginTop: 2,
-  },
-  callCardTag: {
-    fontSize: 10,
-    color: '#ffffff',
-    opacity: 0.75,
-    marginTop: 2,
-  },
-  cancelButton: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#f4f4f5',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0a0a0a',
+    color: '#555555',
   },
 });

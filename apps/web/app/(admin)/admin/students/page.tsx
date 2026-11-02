@@ -1,21 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  GraduationCap,
-  UserPlus,
-  FileSpreadsheet,
-  Search,
-  KeyRound,
-  RefreshCw,
-  AlertCircle,
-  Phone,
-  ShieldAlert,
-  ChevronRight,
-  Info,
-  X,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { AdminStudent } from "@/lib/admin/types";
 import { CreateStudentModal } from "../components/CreateStudentModal";
 import { BulkImportModal } from "../components/BulkImportModal";
@@ -28,9 +13,6 @@ export default function StudentManagementPage() {
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
-
-  // Selected student for detail drawer/modal
-  const [selectedStudent, setSelectedStudent] = useState<AdminStudent | null>(null);
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -68,397 +50,227 @@ export default function StudentManagementPage() {
     onConfirm: () => {},
   });
 
-  const fetchStudents = async () => {
+  const loadStudents = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (branchFilter !== "all") params.append("branch", branchFilter);
-      if (yearFilter !== "all") params.append("year", yearFilter);
-
-      const res = await fetch(`/api/admin/students?${params.toString()}`);
+      const res = await fetch("/api/admin/students");
       const data = await res.json();
       setStudents(data.students || []);
-    } catch {
-      // Handle error
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStudents();
-  }, [branchFilter, yearFilter]);
+    loadStudents();
+  }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchStudents();
-  };
-
-  const handleCreateSuccess = (newStudent: AdminStudent, temporaryPassword: string) => {
-    setOtpModalData({
-      isOpen: true,
-      title: "Student Registered",
-      recipientName: newStudent.name,
-      identifier: newStudent.roll_number,
-      identifierLabel: "Roll Number",
-      temporaryPassword,
-      roleOrNote: `${newStudent.branch} • Year ${newStudent.year}`,
-    });
-    fetchStudents();
+  const handleCreated = (data: {
+    student: AdminStudent;
+    temporaryPassword?: string;
+  }) => {
+    setIsCreateOpen(false);
+    loadStudents();
+    if (data.temporaryPassword) {
+      setOtpModalData({
+        isOpen: true,
+        title: "Student Profile Provisioned",
+        recipientName: data.student.name,
+        identifier: data.student.roll_number,
+        identifierLabel: "Roll Number",
+        temporaryPassword: data.temporaryPassword,
+        roleOrNote: `${data.student.branch} • Year ${data.student.year}`,
+      });
+    }
   };
 
   const handleResetPassword = (student: AdminStudent) => {
     setConfirmModalData({
       isOpen: true,
-      title: "Reset Student Password",
-      description: `Generate a new temporary password for ${student.name} (${student.roll_number})? The student will be forced to change this on their next mobile login.`,
-      confirmLabel: "Generate Temporary Password",
+      title: "Generate One-Time Password",
+      description: `Reset mobile application password for ${student.name} (${student.roll_number})?`,
+      confirmLabel: "Generate OTP",
       isDestructive: false,
       onConfirm: async () => {
-        try {
-          const res = await fetch("/api/admin/students", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: student.id }),
+        const res = await fetch("/api/admin/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reset_password",
+            id: student.id,
+          }),
+        });
+        const data = await res.json();
+        setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+        if (data.temporaryPassword) {
+          setOtpModalData({
+            isOpen: true,
+            title: "Temporary Password Issued",
+            recipientName: student.name,
+            identifier: student.roll_number,
+            identifierLabel: "Roll Number",
+            temporaryPassword: data.temporaryPassword,
+            roleOrNote: "Mobile Sign-in Credentials",
           });
-          const data = await res.json();
-          if (res.ok) {
-            setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
-            setOtpModalData({
-              isOpen: true,
-              title: "Temporary Password Generated",
-              recipientName: student.name,
-              identifier: student.roll_number,
-              identifierLabel: "Roll Number",
-              temporaryPassword: data.temporary_password,
-              roleOrNote: student.branch,
-            });
-            fetchStudents();
-          }
-        } catch {
-          // Handle error
         }
       },
     });
   };
 
+  const filteredStudents = students.filter((s) => {
+    const matchSearch =
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.roll_number.toLowerCase().includes(search.toLowerCase());
+    const matchBranch = branchFilter === "all" || s.branch === branchFilter;
+    const matchYear = yearFilter === "all" || s.year.toString() === yearFilter;
+    return matchSearch && matchBranch && matchYear;
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#E5E5E5] pb-5">
+    <div className="space-y-8">
+      {/* Top Header */}
+      <div className="flex items-baseline justify-between border-b border-[#E4E4E7] pb-6">
         <div>
-          <h1 className="text-xl font-bold uppercase tracking-tight text-black">
-            Student Roster Management
-          </h1>
-          <p className="mt-1 text-xs text-neutral-500">
-            Enrol individual students or batch import with column-mapping and credentials distribution
+          <h1 className="text-2xl font-semibold text-[#09090B]">Student Roster</h1>
+          <p className="text-xs text-[#71717A] mt-1">
+            Institutional student directory, baseline allergy records, and mobile provisioning.
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
             onClick={() => setIsBulkOpen(true)}
-            className="rounded-lg border-[#E5E5E5] text-xs font-semibold px-3 h-9 text-black hover:bg-neutral-100"
+            className="h-10 px-4 rounded border border-[#E4E4E7] text-[#09090B] text-xs font-medium hover:bg-[#FAFAFA] transition-colors"
           >
-            <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Batch CSV Ingest
-          </Button>
-          <Button
+            Import CSV Roster
+          </button>
+          <button
+            type="button"
             onClick={() => setIsCreateOpen(true)}
-            className="rounded-lg bg-black text-white hover:bg-neutral-800 text-xs font-semibold px-4 h-9"
+            className="h-10 px-4 rounded bg-[#09090B] text-white text-xs font-medium hover:bg-neutral-800 transition-colors"
           >
-            <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Enroll Student
-          </Button>
+            Add Student
+          </button>
         </div>
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-3 rounded-lg border border-[#E5E5E5] bg-white p-3 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="relative w-full lg:w-80">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Search by roll number, name, or phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-[#E5E5E5] pl-8 pr-3 py-1.5 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none font-mono"
-          />
-        </form>
+      <div className="flex items-center gap-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or roll number..."
+          className="h-10 px-3 w-80 text-xs rounded border border-[#E4E4E7] bg-white focus:outline-none focus:border-[#09090B]"
+        />
 
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
-          {/* Branch Filter */}
-          <div className="flex items-center space-x-1.5">
-            <span className="text-[11px] font-semibold uppercase text-neutral-500">Branch:</span>
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="rounded-lg border border-[#E5E5E5] px-2.5 py-1 text-xs bg-white text-black focus:border-black focus:outline-none"
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-[#71717A]">Branch:</span>
+          {(["all", "CSE", "ECE", "ME", "IT"] as const).map((b) => (
+            <button
+              key={b}
+              type="button"
+              onClick={() => setBranchFilter(b)}
+              className={`px-2.5 py-1 rounded text-xs transition-colors ${
+                branchFilter === b
+                  ? "bg-[#09090B] text-white font-medium"
+                  : "text-[#71717A] hover:text-[#09090B] border border-[#E4E4E7]"
+              }`}
             >
-              <option value="all">All Branches</option>
-              <option value="CSE">CSE</option>
-              <option value="ECE">ECE</option>
-              <option value="IT">IT</option>
-              <option value="ME">ME</option>
-              <option value="CE">CE</option>
-            </select>
-          </div>
-
-          {/* Year Filter */}
-          <div className="flex items-center space-x-1.5">
-            <span className="text-[11px] font-semibold uppercase text-neutral-500">Year:</span>
-            <select
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
-              className="rounded-lg border border-[#E5E5E5] px-2.5 py-1 text-xs bg-white text-black focus:border-black focus:outline-none"
-            >
-              <option value="all">All Years</option>
-              <option value="1">1st Year</option>
-              <option value="2">2nd Year</option>
-              <option value="3">3rd Year</option>
-              <option value="4">4th Year</option>
-            </select>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchStudents}
-            className="rounded-lg border-[#E5E5E5] text-xs h-8"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </Button>
+              {b === "all" ? "All" : b}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Students Table */}
-      <div className="rounded-lg border border-[#E5E5E5] bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-neutral-50 border-b border-[#E5E5E5] text-[11px] uppercase font-semibold text-neutral-600 tracking-wider">
+      {/* Clean Table */}
+      <div className="border border-[#E4E4E7] rounded overflow-hidden">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-[#FAFAFA] border-b border-[#E4E4E7] text-[11px] uppercase tracking-wider text-[#71717A]">
+            <tr>
+              <th className="py-3 px-4 font-medium">Name</th>
+              <th className="py-3 px-4 font-medium">Roll Number</th>
+              <th className="py-3 px-4 font-medium">Branch</th>
+              <th className="py-3 px-4 font-medium">Year</th>
+              <th className="py-3 px-4 font-medium">Status</th>
+              <th className="py-3 px-4 font-medium">Recorded Allergies</th>
+              <th className="py-3 px-4 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E4E4E7]">
+            {filteredStudents.length === 0 ? (
               <tr>
-                <th className="px-4 py-3 font-mono">Roll Number</th>
-                <th className="px-4 py-3">Student Name</th>
-                <th className="px-4 py-3">Dept & Year</th>
-                <th className="px-4 py-3">Phone</th>
-                <th className="px-4 py-3">Allergies</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <td colSpan={7} className="py-12 text-center text-xs text-[#71717A]">
+                  No students found matching your search.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E5E5E5]">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-neutral-400">
-                    Loading student roster...
+            ) : (
+              filteredStudents.map((s) => (
+                <tr key={s.id} className="h-12 hover:bg-[#FAFAFA] transition-colors">
+                  <td className="py-3 px-4 font-medium text-[#09090B]">{s.name}</td>
+                  <td className="py-3 px-4 font-mono text-[#71717A]">{s.roll_number}</td>
+                  <td className="py-3 px-4 font-medium text-[#09090B]">{s.branch}</td>
+                  <td className="py-3 px-4 text-[#71717A]">Year {s.year}</td>
+                  <td className="py-3 px-4 text-[#09090B] font-medium capitalize">
+                    {s.status}
+                  </td>
+                  <td className="py-3 px-4 text-[#71717A] max-w-xs truncate">
+                    {s.allergies && s.allergies.length > 0
+                      ? s.allergies.join(", ")
+                      : "None recorded"}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleResetPassword(s)}
+                      className="text-xs text-[#09090B] hover:underline"
+                    >
+                      Reset password
+                    </button>
                   </td>
                 </tr>
-              ) : students.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-neutral-400">
-                    No students found matching your filters.
-                  </td>
-                </tr>
-              ) : (
-                students.map((student) => (
-                  <tr key={student.id} className="hover:bg-neutral-50/70 transition-colors">
-                    <td className="px-4 py-3 font-mono font-bold text-black">
-                      {student.roll_number}
-                    </td>
-
-                    <td className="px-4 py-3 font-medium text-black">
-                      {student.name}
-                    </td>
-
-                    <td className="px-4 py-3 text-neutral-700">
-                      <span className="font-semibold text-black">{student.branch}</span> • Year {student.year}
-                    </td>
-
-                    <td className="px-4 py-3 font-mono text-[11px] text-neutral-700">
-                      {student.phone}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {student.allergies.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {student.allergies.slice(0, 2).map((a) => (
-                            <span
-                              key={a}
-                              className="rounded border border-[#E5E5E5] bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-black"
-                            >
-                              {a}
-                            </span>
-                          ))}
-                          {student.allergies.length > 2 && (
-                            <span className="text-[10px] text-neutral-400">
-                              +{student.allergies.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-neutral-400 text-[11px]">None known</span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center text-[11px] font-medium text-black">
-                        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-black"></span>
-                        {student.status}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedStudent(student)}
-                          title="View student profile details"
-                          className="rounded-lg border-[#E5E5E5] text-[11px] h-7 px-2"
-                        >
-                          <Info className="h-3 w-3 mr-1" /> Details
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleResetPassword(student)}
-                          title="Issue new temporary password"
-                          className="rounded-lg border-[#E5E5E5] text-[11px] h-7 px-2 hover:bg-neutral-100"
-                        >
-                          <KeyRound className="h-3 w-3 mr-1" /> Reset Pass
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
-
-      {/* Student Details Drawer / Modal */}
-      {selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-lg border border-[#E5E5E5] bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-start justify-between border-b border-[#E5E5E5] pb-3">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-black">
-                  Student Institutional Card
-                </h3>
-                <p className="text-xs text-neutral-500 font-mono">
-                  {selectedStudent.roll_number}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedStudent(null)}
-                className="rounded-lg p-1 text-neutral-400 hover:bg-neutral-100 hover:text-black"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="flex justify-between py-1 border-b border-[#E5E5E5]">
-                <span className="text-neutral-500">Full Name</span>
-                <span className="font-semibold text-black">{selectedStudent.name}</span>
-              </div>
-
-              <div className="flex justify-between py-1 border-b border-[#E5E5E5]">
-                <span className="text-neutral-500">Branch & Academic Year</span>
-                <span className="font-semibold text-black">
-                  {selectedStudent.branch} (Year {selectedStudent.year})
-                </span>
-              </div>
-
-              <div className="flex justify-between py-1 border-b border-[#E5E5E5]">
-                <span className="text-neutral-500">Student Phone</span>
-                <span className="font-mono text-black">{selectedStudent.phone}</span>
-              </div>
-
-              <div className="flex justify-between py-1 border-b border-[#E5E5E5]">
-                <span className="text-neutral-500">Emergency Contact</span>
-                <span className="font-mono text-black font-semibold">
-                  {selectedStudent.emergency_contact}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-neutral-500 mb-1">Recorded Drug Allergies</span>
-                {selectedStudent.allergies.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedStudent.allergies.map((a) => (
-                      <span
-                        key={a}
-                        className="rounded-lg border border-black bg-neutral-100 px-2.5 py-1 text-xs font-semibold text-black"
-                      >
-                        {a}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-neutral-400 italic">No drug allergies recorded.</div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-[#E5E5E5]">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const s = selectedStudent;
-                  setSelectedStudent(null);
-                  handleResetPassword(s);
-                }}
-                className="rounded-lg border-[#E5E5E5] text-xs h-8"
-              >
-                <KeyRound className="h-3 w-3 mr-1" /> Reset Password
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setSelectedStudent(null)}
-                className="rounded-lg bg-black text-white hover:bg-neutral-800 text-xs font-semibold h-8 px-4"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       <CreateStudentModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={handleCreateSuccess}
+        onSuccess={(student, temporaryPassword) => handleCreated({ student, temporaryPassword })}
       />
 
       <BulkImportModal
         isOpen={isBulkOpen}
         onClose={() => setIsBulkOpen(false)}
-        onSuccess={fetchStudents}
+        onSuccess={() => {
+          setIsBulkOpen(false);
+          loadStudents();
+        }}
+      />
+
+      <ConfirmActionModal
+        isOpen={confirmModalData.isOpen}
+        onClose={() => setConfirmModalData((prev) => ({ ...prev, isOpen: false }))}
+        title={confirmModalData.title}
+        description={confirmModalData.description}
+        confirmLabel={confirmModalData.confirmLabel}
+        isDestructive={confirmModalData.isDestructive}
+        onConfirm={confirmModalData.onConfirm}
       />
 
       <OneTimePasswordModal
         isOpen={otpModalData.isOpen}
-        onClose={() => setOtpModalData({ ...otpModalData, isOpen: false })}
+        onClose={() => setOtpModalData((prev) => ({ ...prev, isOpen: false }))}
         title={otpModalData.title}
         recipientName={otpModalData.recipientName}
         identifier={otpModalData.identifier}
         identifierLabel={otpModalData.identifierLabel}
         temporaryPassword={otpModalData.temporaryPassword}
         roleOrNote={otpModalData.roleOrNote}
-      />
-
-      <ConfirmActionModal
-        isOpen={confirmModalData.isOpen}
-        onClose={() => setConfirmModalData({ ...confirmModalData, isOpen: false })}
-        onConfirm={confirmModalData.onConfirm}
-        title={confirmModalData.title}
-        description={confirmModalData.description}
-        confirmLabel={confirmModalData.confirmLabel}
-        isDestructive={confirmModalData.isDestructive}
       />
     </div>
   );

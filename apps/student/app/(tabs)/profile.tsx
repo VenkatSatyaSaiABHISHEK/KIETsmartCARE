@@ -7,18 +7,10 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
-  Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import {
-  User,
-  Clock,
-  Globe,
-  LogOut,
-  ShieldAlert,
-  Save,
-  Check,
-} from 'lucide-react-native';
 import { StudentApi } from '../../src/services/student-api';
 import { AuthService } from '../../src/services/auth';
 import { StudentProfileData } from '../../src/types/student';
@@ -27,11 +19,16 @@ import { ReminderEngine } from '../../src/services/reminder-engine';
 export default function ProfileScreen() {
   const router = useRouter();
   const [profile, setProfile] = useState<StudentProfileData | null>(null);
-  const [breakfast, setBreakfast] = useState('08:15');
-  const [lunch, setLunch] = useState('13:30');
-  const [dinner, setDinner] = useState('20:30');
-  const [language, setLanguage] = useState<'en' | 'te'>('en');
+  const [breakfast, setBreakfast] = useState('08:00');
+  const [lunch, setLunch] = useState('13:00');
+  const [dinner, setDinner] = useState('20:00');
   const [isSaved, setIsSaved] = useState(false);
+  const [testAlarmStatus, setTestAlarmStatus] = useState<string | null>(null);
+  const [contacts, setContacts] = useState({
+    clinic: { label: 'College Campus Clinic', phone: '+91-120-2983555' },
+    officer: { label: 'Campus Health Officer', phone: '+91-9876543210' },
+    doctor: { label: 'Campus OPD Doctor', phone: '+91-9876543211' },
+  });
 
   useEffect(() => {
     async function load() {
@@ -42,7 +39,13 @@ export default function ProfileScreen() {
         setLunch(data.meal_times.lunch);
         setDinner(data.meal_times.dinner);
       }
-      setLanguage(data.language || 'en');
+      try {
+        const res = await fetch('/api/clinic/emergency-contacts');
+        const contactData = await res.json();
+        if (contactData?.contacts) {
+          setContacts(contactData.contacts);
+        }
+      } catch {}
     }
     load();
   }, []);
@@ -55,72 +58,44 @@ export default function ProfileScreen() {
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to log out of KIET Smart Care?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await AuthService.logout();
-          router.replace('/login');
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    await AuthService.logout();
+    router.replace('/login');
   };
 
-  if (!profile) return null;
+  const handleTestAlarm = async () => {
+    setTestAlarmStatus('Scheduling alarm for 5 seconds from now...');
+    try {
+      await ReminderEngine.triggerImmediateAlarmTest(5, 'Paracetamol 650mg');
+      setTestAlarmStatus('Alarm scheduled! In 5s, the clinical chime sound will ring. You can lock or minimize your phone now to test background execution.');
+      setTimeout(() => setTestAlarmStatus(null), 8000);
+    } catch {
+      setTestAlarmStatus('Failed to schedule test alarm. Please ensure notification permissions are granted.');
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Student Identity Card */}
-        <View style={styles.profileHeaderCard}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>{profile.full_name.charAt(0)}</Text>
-          </View>
-          <Text style={styles.studentName}>{profile.full_name}</Text>
-          <Text style={styles.rollBadge}>Roll: {profile.roll_number}</Text>
-          <Text style={styles.academicInfo}>
-            {profile.department} &bull; Year {profile.year}
-          </Text>
-          <Text style={styles.hostelInfo}>
-            {profile.hostel_status} {profile.room_number ? `(${profile.room_number})` : ''}
+        {/* Student Identity */}
+        <View style={styles.identitySection}>
+          <Text style={styles.name}>{profile?.full_name || 'Student Profile'}</Text>
+          <Text style={styles.rollNumber}>{profile?.roll_number || 'Roll Number'}</Text>
+          <Text style={styles.meta}>
+            {profile?.department || profile?.branch || 'Student'} &bull; Year {profile?.year || 1} &bull; {profile?.hostel_status}
           </Text>
         </View>
 
-        {/* Documented Allergies Box */}
-        <View style={styles.allergiesCard}>
-          <View style={styles.cardTitleRow}>
-            <ShieldAlert color="#b91c1c" size={16} />
-            <Text style={styles.allergiesTitle}>Documented Drug Allergies</Text>
-          </View>
-          {profile.allergies.length > 0 ? (
-            <View style={styles.allergyPillsRow}>
-              {profile.allergies.map((allergy, i) => (
-                <View key={i} style={styles.allergyPill}>
-                  <Text style={styles.allergyPillText}>&times; {allergy}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.noAllergiesText}>No drug allergies reported on campus medical file.</Text>
-          )}
-        </View>
-
-        {/* Meal Timings Configuration */}
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Clock color="#0a0a0a" size={16} />
-            <Text style={styles.cardTitle}>Custom Meal Schedule</Text>
-          </View>
-          <Text style={styles.cardSub}>
-            Medicine alarm triggers automatically offset 30 minutes before or after these meal times.
+        {/* Meal Schedule Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>PERSONAL MEAL SCHEDULE</Text>
+          <Text style={styles.sectionSub}>
+            Medicine alarms automatically sync to your breakfast, lunch, and dinner times (&plusmn;30 mins).
           </Text>
 
-          <View style={styles.timeInputsRow}>
-            <View style={styles.timeField}>
-              <Text style={styles.timeLabel}>Breakfast (24h)</Text>
+          <View style={styles.scheduleBox}>
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Breakfast</Text>
               <TextInput
                 style={styles.timeInput}
                 value={breakfast}
@@ -128,8 +103,9 @@ export default function ProfileScreen() {
                 placeholder="08:00"
               />
             </View>
-            <View style={styles.timeField}>
-              <Text style={styles.timeLabel}>Lunch (24h)</Text>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Lunch</Text>
               <TextInput
                 style={styles.timeInput}
                 value={lunch}
@@ -137,8 +113,9 @@ export default function ProfileScreen() {
                 placeholder="13:00"
               />
             </View>
-            <View style={styles.timeField}>
-              <Text style={styles.timeLabel}>Dinner (24h)</Text>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Dinner</Text>
               <TextInput
                 style={styles.timeInput}
                 value={dinner}
@@ -149,262 +126,269 @@ export default function ProfileScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.saveMealBtn}
+            style={styles.saveBtn}
             onPress={handleSaveMealTimes}
             activeOpacity={0.8}
           >
-            {isSaved ? (
-              <>
-                <Check color="#ffffff" size={16} />
-                <Text style={styles.saveMealBtnText}>Alarms Resynchronized!</Text>
-              </>
-            ) : (
-              <>
-                <Save color="#ffffff" size={16} />
-                <Text style={styles.saveMealBtnText}>Save & Reschedule Alarms</Text>
-              </>
-            )}
+            <Text style={styles.saveBtnText}>
+              {isSaved ? 'Schedule Updated' : 'Save Meal Timings'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Language Placeholder */}
-        <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Globe color="#0a0a0a" size={16} />
-            <Text style={styles.cardTitle}>Language Selection</Text>
+        {/* Automated Alarm & Audio Diagnostics (Judges & Testers) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>AUTOMATED ALARM & SOUND DIAGNOSTICS</Text>
+          <Text style={styles.sectionSub}>
+            Verify automatic background alarm dispatch with open-source chime audio (chime_reminder.wav).
+          </Text>
+
+          <TouchableOpacity
+            style={styles.alarmTestBtn}
+            onPress={handleTestAlarm}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.alarmTestBtnText}>Ring Test Alarm Now (5s delay)</Text>
+          </TouchableOpacity>
+
+          {testAlarmStatus && (
+            <View style={styles.testStatusBox}>
+              <Text style={styles.testStatusText}>{testAlarmStatus}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Data Governance & Privacy Disclosure */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>PRIVACY & AUTO-ALARM POLICY</Text>
+          <View style={styles.policyCard}>
+            <Text style={styles.policyTitle}>Automatic Alarm Scheduling</Text>
+            <Text style={styles.policyText}>
+              • Zero Manual Setup: Doses prescribed by campus OPD doctors automatically convert into scheduled device alarms.
+            </Text>
+            <Text style={styles.policyText}>
+              • Background & Lock-Screen Audio: Notifications play a gentle chime tone even if the app is closed or the screen is locked.
+            </Text>
+            <Text style={styles.policyText}>
+              • No Clinical Data Sharing: Institutional admins have zero access to your medical conditions or prescriptions.
+            </Text>
           </View>
-          <View style={styles.langRow}>
+        </View>
+
+        {/* Emergency Contacts Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>EMERGENCY CONTACTS</Text>
+          <Text style={styles.sectionSub}>
+            Direct telephonic emergency actions available 24/7 on campus.
+          </Text>
+
+          <View style={styles.contactsList}>
             <TouchableOpacity
-              style={[styles.langOption, language === 'en' && styles.langOptionActive]}
-              onPress={() => setLanguage('en')}
+              style={styles.contactRow}
+              onPress={() => Linking.openURL(`tel:${contacts.clinic.phone.replace(/[\s-]/g, '')}`)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.langText, language === 'en' && styles.langTextActive]}>
-                English (Active)
-              </Text>
+              <Text style={styles.contactName}>{contacts.clinic.label}</Text>
+              <Text style={styles.contactPhone}>{contacts.clinic.phone} &rarr;</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.langOption, language === 'te' && styles.langOptionActive]}
-              onPress={() => {
-                Alert.alert('Telugu Language Pack', 'Telugu localization will be available in the upcoming campus update.');
-              }}
+              style={styles.contactRow}
+              onPress={() => Linking.openURL(`tel:${contacts.officer.phone.replace(/[\s-]/g, '')}`)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.langText, language === 'te' && styles.langTextActive]}>
-                తెలుగు (Telugu - Coming Soon)
-              </Text>
+              <Text style={styles.contactName}>{contacts.officer.label}</Text>
+              <Text style={styles.contactPhone}>{contacts.officer.phone} &rarr;</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.contactRow}
+              onPress={() => Linking.openURL(`tel:${contacts.doctor.phone.replace(/[\s-]/g, '')}`)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.contactName}>{contacts.doctor.label}</Text>
+              <Text style={styles.contactPhone}>{contacts.doctor.phone} &rarr;</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Sign Out Button */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <LogOut color="#dc2626" size={18} />
-          <Text style={styles.logoutBtnText}>Sign Out of My Account</Text>
-        </TouchableOpacity>
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>ACCOUNT</Text>
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.logoutText}>Sign out of KIET Smart Care</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     padding: 20,
-    gap: 16,
     paddingBottom: 40,
   },
-  profileHeaderCard: {
-    backgroundColor: '#0a0a0a',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 4,
+  identitySection: {
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEBEB',
   },
-  avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#27272a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  avatarInitial: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#ffffff',
-  },
-  studentName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: -0.4,
-  },
-  rollBadge: {
-    fontSize: 12,
+  name: {
+    fontSize: 24,
     fontWeight: '700',
-    color: '#60a5fa',
-    backgroundColor: '#1e3a8a',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    marginTop: 6,
+    color: '#121212',
   },
-  academicInfo: {
-    fontSize: 13,
-    color: '#a1a1aa',
-    marginTop: 8,
-  },
-  hostelInfo: {
-    fontSize: 12,
-    color: '#71717a',
+  rollNumber: {
+    fontSize: 14,
+    color: '#555555',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     marginTop: 2,
   },
-  allergiesCard: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    borderRadius: 20,
-    padding: 16,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  allergiesTitle: {
+  meta: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#991b1b',
-  },
-  allergyPillsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    color: '#555555',
     marginTop: 4,
   },
-  allergyPill: {
-    backgroundColor: '#ffffff',
+  section: {
+    marginTop: 28,
+  },
+  sectionHeading: {
+    fontSize: 11,
+    letterSpacing: 1,
+    fontWeight: '700',
+    color: '#555555',
+  },
+  sectionSub: {
+    fontSize: 13,
+    color: '#555555',
+    marginTop: 4,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  scheduleBox: {
     borderWidth: 1,
-    borderColor: '#f87171',
+    borderColor: '#EBEBEB',
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
   },
-  allergyPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#b91c1c',
-  },
-  noAllergiesText: {
-    fontSize: 12,
-    color: '#7f1d1d',
-  },
-  card: {
-    backgroundColor: '#f4f4f5',
-    borderRadius: 20,
-    padding: 18,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  cardSub: {
-    fontSize: 12,
-    color: '#71717a',
-    lineHeight: 16,
-    marginBottom: 14,
-  },
-  timeInputsRow: {
+  inputRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEBEB',
   },
-  timeField: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#e4e4e7',
-  },
-  timeLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#71717a',
-    marginBottom: 4,
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#121212',
   },
   timeInput: {
     fontSize: 15,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: '#121212',
+    textAlign: 'right',
+    padding: 4,
+    minWidth: 80,
   },
-  saveMealBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  saveBtn: {
+    marginTop: 12,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#121212',
     justifyContent: 'center',
-    backgroundColor: '#0a0a0a',
-    height: 44,
-    borderRadius: 12,
-    gap: 8,
+    alignItems: 'center',
   },
-  saveMealBtnText: {
-    color: '#ffffff',
+  saveBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
-  langRow: {
-    gap: 8,
-    marginTop: 4,
-  },
-  langOption: {
-    padding: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+  contactsList: {
     borderWidth: 1,
-    borderColor: '#e4e4e7',
+    borderColor: '#EBEBEB',
+    borderRadius: 8,
   },
-  langOptionActive: {
-    borderColor: '#0a0a0a',
-    backgroundColor: '#fafafa',
+  contactRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEBEB',
   },
-  langText: {
+  contactName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#121212',
+  },
+  contactPhone: {
     fontSize: 13,
-    color: '#71717a',
-    fontWeight: '500',
-  },
-  langTextActive: {
-    color: '#0a0a0a',
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#991B1B',
   },
   logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    height: 50,
-    borderRadius: 14,
-    gap: 8,
-    marginTop: 10,
+    paddingVertical: 12,
   },
-  logoutBtnText: {
-    color: '#dc2626',
-    fontSize: 14,
+  logoutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#991B1B',
+  },
+  alarmTestBtn: {
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#059669', // Emerald
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alarmTestBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
+  },
+  testStatusBox: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  testStatusText: {
+    fontSize: 12,
+    color: '#065F46',
+    lineHeight: 17,
+  },
+  policyCard: {
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    backgroundColor: '#FAFAFA',
+    gap: 8,
+  },
+  policyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#121212',
+    marginBottom: 2,
+  },
+  policyText: {
+    fontSize: 12,
+    color: '#444444',
+    lineHeight: 18,
   },
 });

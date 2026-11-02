@@ -1,4 +1,26 @@
-import { AlertLevel, DoseStatus, MealRelation, MealType, RecoveryStatus, UserRole } from '../constants';
+import { AlertLevel, DoseStatus, MealRelation, MealType, RecoveryStatus, UserRole, ClinicalDoseSlot } from '../constants';
+export * from './database';
+export interface PlannedDoseSlot {
+    id: string;
+    slot_name: ClinicalDoseSlot;
+    time_hhmm: string;
+    meal_relation: MealRelation;
+    day_offset: number;
+    target_date: string;
+    tablets: number;
+    custom_time?: boolean;
+}
+export interface DoctorPrescriptionItem {
+    id: string;
+    medicine_id?: string;
+    medicine_name: string;
+    tablets_per_dose: number;
+    total_doses: number;
+    pattern?: 'once' | 'twice' | 'thrice' | 'night_only' | 'custom';
+    meal_relation: MealRelation;
+    instructions?: string;
+    planned_doses: PlannedDoseSlot[];
+}
 export interface BaseEntity {
     id: string;
     created_at: string;

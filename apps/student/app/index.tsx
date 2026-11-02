@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ShieldCheck } from 'lucide-react-native';
 import { AuthService } from '../src/services/auth';
 import { ReminderEngine } from '../src/services/reminder-engine';
 import { StudentApi } from '../src/services/student-api';
@@ -57,12 +56,8 @@ export default function EntryRouterScreen() {
 
   return (
     <View style={styles.splashContainer}>
-      <View style={styles.logoBadge}>
-        <ShieldCheck color="#ffffff" size={40} />
-      </View>
-      <Text style={styles.title}>KIET Smart Care</Text>
-      <Text style={styles.subtitle}>Campus Healthcare System</Text>
-      <ActivityIndicator size="small" color="#0a0a0a" style={styles.loader} />
+      <Text style={styles.brandTitle}>KIET SMART CARE</Text>
+      <Text style={styles.subtext}>Campus Healthcare Network</Text>
     </View>
   );
 }
@@ -70,37 +65,20 @@ export default function EntryRouterScreen() {
 const styles = StyleSheet.create({
   splashContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 24,
   },
-  logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    backgroundColor: '#0a0a0a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 4,
+  brandTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#121212',
+    letterSpacing: -0.3,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
+  subtext: {
     fontSize: 13,
-    color: '#71717a',
-    marginTop: 4,
-  },
-  loader: {
-    marginTop: 28,
+    color: '#555555',
+    marginTop: 6,
   },
 });

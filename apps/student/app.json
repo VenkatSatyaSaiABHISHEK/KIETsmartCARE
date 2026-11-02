@@ -35,9 +35,15 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#000000"
+          "color": "#000000",
+          "sounds": [
+            "./assets/sounds/chime_reminder.wav",
+            "./assets/sounds/gentle_bell.wav",
+            "./assets/sounds/voice_dose_reminder.wav"
+          ]
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }

@@ -6,187 +6,46 @@ import {
   PrescriptionPreset,
   TodayPatientItem,
   DoctorAlertItem,
+  DoctorPatientRecord,
   VisitSubmissionPayload,
   DaySchedulePreviewItem,
-  PrescriptionRow,
+  DoctorMedicinePrescription,
+  PlannedTimelineSlot,
+  ClinicalSlotName,
 } from "./types";
-import {
-  BEFORE_MEAL_OFFSET_MINUTES,
-  AFTER_MEAL_OFFSET_MINUTES,
-  DEFAULT_MEAL_TIMES,
-} from "@kiet-smart-care/shared";
+import { DEFAULT_SLOT_TIMES } from "@kiet-smart-care/shared";
 
-// In-memory mock database for fast, calm, clinical responsiveness
-const MOCK_STUDENTS: StudentFullProfile[] = [
-  {
-    id: "std-001",
-    roll_number: "2200290120019",
-    name: "Aarav Sharma",
-    branch: "Computer Science & Engineering",
-    year: 3,
-    phone: "+91 98765 43210",
-    hostel_status: "Hosteler",
-    hostel_name: "Tagore Hostel",
-    room_number: "T-302",
-    avatar_url: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=160&h=160&fit=crop&crop=faces",
-    allergies: ["Penicillin", "Sulfa drugs"],
-    meal_times: {
-      breakfast: "08:15",
-      lunch: "13:30",
-      dinner: "20:30",
-    },
-  },
-  {
-    id: "std-002",
-    roll_number: "2100290100112",
-    name: "Sneha Patel",
-    branch: "Information Technology",
-    year: 4,
-    phone: "+91 98112 34567",
-    hostel_status: "Day Scholar",
-    avatar_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&h=160&fit=crop&crop=faces",
-    allergies: ["Aspirin", "Ibuprofen"],
-    meal_times: {
-      breakfast: "08:00",
-      lunch: "13:00",
-      dinner: "20:00",
-    },
-  },
-  {
-    id: "std-003",
-    roll_number: "2300290130088",
-    name: "Rohan Verma",
-    branch: "Electronics & Communication",
-    year: 2,
-    phone: "+91 97654 32109",
-    hostel_status: "Hosteler",
-    hostel_name: "Aryabhatta Hostel",
-    room_number: "A-114",
-    avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160&h=160&fit=crop&crop=faces",
-    allergies: [],
-    meal_times: {
-      breakfast: "08:30",
-      lunch: "13:15",
-      dinner: "21:00",
-    },
-  },
-  {
-    id: "std-004",
-    roll_number: "2200290110054",
-    name: "Priya Nair",
-    branch: "Mechanical Engineering",
-    year: 3,
-    phone: "+91 98234 56789",
-    hostel_status: "Hosteler",
-    hostel_name: "Gargi Girls Hostel",
-    room_number: "G-208",
-    avatar_url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=160&h=160&fit=crop&crop=faces",
-    allergies: ["Paracetamol (Mild)"],
-    meal_times: {
-      breakfast: "07:45",
-      lunch: "12:45",
-      dinner: "19:45",
-    },
-  },
-  {
-    id: "std-005",
-    roll_number: "2400290100015",
-    name: "Kabir Singh",
-    branch: "Electrical Engineering",
-    year: 1,
-    phone: "+91 99123 45678",
-    hostel_status: "Day Scholar",
-    avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&h=160&fit=crop&crop=faces",
-    allergies: [],
-    meal_times: {
-      breakfast: "08:00",
-      lunch: "13:00",
-      dinner: "20:00",
-    },
-  },
-];
-
-const MOCK_VISIT_HISTORY: Record<string, VisitHistoryEntry[]> = {
-  "std-001": [
-    {
-      id: "vh-001",
-      date: "14 Oct 2026",
-      doctor_name: "Dr. Alok Verma",
-      problem_category: "Fever",
-      notes: "High temperature with mild chills. Advised hydration.",
-      medicines: [
-        { name: "Paracetamol 650mg", dose: "1 tablet", duration: "3 days" },
-        { name: "ORS Sachet", dose: "1 sachet in 1L water", duration: "2 days" },
-      ],
-      outcome: "recovered",
-    },
-    {
-      id: "vh-002",
-      date: "28 Aug 2026",
-      doctor_name: "Dr. Alok Verma",
-      problem_category: "Headache",
-      notes: "Tension headache due to late study hours.",
-      medicines: [
-        { name: "Paracetamol 500mg", dose: "1 tablet", duration: "2 days" },
-      ],
-      outcome: "recovered",
-    },
-  ],
-  "std-002": [
-    {
-      id: "vh-003",
-      date: "29 Oct 2026",
-      doctor_name: "Dr. Alok Verma",
-      problem_category: "Cold and cough",
-      notes: "Throat irritation and mild bronchial congestion.",
-      medicines: [
-        { name: "Cetirizine 10mg", dose: "1 tablet", duration: "3 days" },
-        { name: "Dextromethorphan Syrup", dose: "10ml", duration: "3 days" },
-      ],
-      outcome: "active",
-    },
-  ],
-};
-
-const MOCK_MEDICINES: MedicineCatalogItem[] = [
-  { id: "med-1", name: "Paracetamol 650mg", default_dose: "1 tablet", category: "Analgesic / Antipyretic", stock_quantity: 450, allergy_keywords: ["paracetamol", "acetaminophen"] },
-  { id: "med-2", name: "Paracetamol 500mg", default_dose: "1 tablet", category: "Analgesic / Antipyretic", stock_quantity: 320, allergy_keywords: ["paracetamol", "acetaminophen"] },
-  { id: "med-3", name: "Amoxicillin 500mg", default_dose: "1 capsule", category: "Antibiotic", stock_quantity: 180, allergy_keywords: ["amoxicillin", "penicillin", "beta-lactam"] },
-  { id: "med-4", name: "Azithromycin 500mg", default_dose: "1 tablet", category: "Antibiotic", stock_quantity: 120, allergy_keywords: ["azithromycin", "macrolide"] },
-  { id: "med-5", name: "Cetirizine 10mg", default_dose: "1 tablet", category: "Antihistamine", stock_quantity: 600, allergy_keywords: ["cetirizine"] },
-  { id: "med-6", name: "Pantoprazole 40mg", default_dose: "1 tablet", category: "Antacid / PPI", stock_quantity: 500, allergy_keywords: ["pantoprazole", "ppi"] },
-  { id: "med-7", name: "Ibuprofen 400mg", default_dose: "1 tablet", category: "NSAID", stock_quantity: 210, allergy_keywords: ["ibuprofen", "nsaid", "aspirin"] },
-  { id: "med-8", name: "Domperidone 10mg", default_dose: "1 tablet", category: "Antiemetic", stock_quantity: 190, allergy_keywords: ["domperidone"] },
-  { id: "med-9", name: "ORS Sachet", default_dose: "1 sachet in 1L", category: "Rehydration", stock_quantity: 800, allergy_keywords: [] },
-  { id: "med-10", name: "Dextromethorphan Syrup", default_dose: "10ml", category: "Cough Suppressant", stock_quantity: 95, allergy_keywords: [] },
-];
-
-const MOCK_PRESETS: PrescriptionPreset[] = [
+// Clinical Presets (institutional treatment guidelines, dose-centric)
+const CLINICAL_PRESETS: PrescriptionPreset[] = [
   {
     id: "preset-fever",
-    name: "Fever & Flu (3 Days)",
-    problem: "Fever",
-    notes: "Rest, plenty of fluids, and meal-anchored antipyretics.",
+    name: "Acute Viral Illness / Fever Protocol",
+    problem: "Fever and body ache",
+    notes: "Patient advised complete bed rest, oral rehydration therapy, and soft diet.",
     medicines: [
       {
         medicine_name: "Paracetamol 650mg",
-        dose: "1 tablet",
-        times_per_day: 2,
+        tablets_per_dose: 1,
+        total_doses: 6,
+        pattern: "twice",
         meal_relation: "after",
-        meal_slots: ["lunch", "dinner"],
-        number_of_days: 3,
-        quantity_handed_over: 6,
-        instructions: "Take with full glass of water after food",
+        instructions: "Take with water after food",
       },
       {
-        medicine_name: "Cetirizine 10mg",
-        dose: "1 tablet",
-        times_per_day: 1,
+        medicine_name: "Pantoprazole 40mg",
+        tablets_per_dose: 1,
+        total_doses: 3,
+        pattern: "once",
+        meal_relation: "before",
+        instructions: "Take 30 minutes before morning meal",
+      },
+      {
+        medicine_name: "ORS Electrolyte Sachet",
+        tablets_per_dose: 1,
+        total_doses: 2,
+        pattern: "once",
         meal_relation: "after",
-        meal_slots: ["dinner"],
-        number_of_days: 3,
-        quantity_handed_over: 3,
-        instructions: "Take before sleep",
+        instructions: "Dissolve 1 sachet in 1L water; sip throughout day",
       },
     ],
   },
@@ -198,23 +57,19 @@ const MOCK_PRESETS: PrescriptionPreset[] = [
     medicines: [
       {
         medicine_name: "Cetirizine 10mg",
-        dose: "1 tablet",
-        times_per_day: 1,
+        tablets_per_dose: 1,
+        total_doses: 3,
+        pattern: "night_only",
         meal_relation: "after",
-        meal_slots: ["dinner"],
-        number_of_days: 3,
-        quantity_handed_over: 3,
-        instructions: "Take after dinner",
+        instructions: "Take after dinner before sleep",
       },
       {
         medicine_name: "Dextromethorphan Syrup",
-        dose: "10ml",
-        times_per_day: 2,
+        tablets_per_dose: 1,
+        total_doses: 6,
+        pattern: "twice",
         meal_relation: "after",
-        meal_slots: ["breakfast", "dinner"],
-        number_of_days: 3,
-        quantity_handed_over: 1,
-        instructions: "Do not drink water immediately after syrup",
+        instructions: "Take 10ml after breakfast and dinner",
       },
     ],
   },
@@ -226,391 +81,537 @@ const MOCK_PRESETS: PrescriptionPreset[] = [
     medicines: [
       {
         medicine_name: "Pantoprazole 40mg",
-        dose: "1 tablet",
-        times_per_day: 1,
+        tablets_per_dose: 1,
+        total_doses: 5,
+        pattern: "once",
         meal_relation: "before",
-        meal_slots: ["breakfast"],
-        number_of_days: 5,
-        quantity_handed_over: 5,
         instructions: "Take 30 min before morning breakfast",
       },
       {
         medicine_name: "Domperidone 10mg",
-        dose: "1 tablet",
-        times_per_day: 2,
+        tablets_per_dose: 1,
+        total_doses: 6,
+        pattern: "twice",
         meal_relation: "before",
-        meal_slots: ["lunch", "dinner"],
-        number_of_days: 3,
-        quantity_handed_over: 6,
         instructions: "Take 30 min before meals",
       },
     ],
-  },
-  {
-    id: "preset-headache",
-    name: "Tension Headache / Body Pain",
-    problem: "Headache",
-    notes: "Adequate hydration and screen breaks recommended.",
-    medicines: [
-      {
-        medicine_name: "Paracetamol 500mg",
-        dose: "1 tablet",
-        times_per_day: 2,
-        meal_relation: "after",
-        meal_slots: ["lunch", "dinner"],
-        number_of_days: 2,
-        quantity_handed_over: 4,
-        instructions: "Take after meals as needed",
-      },
-    ],
-  },
-];
-
-let todayPatients: TodayPatientItem[] = [
-  {
-    id: "tp-1",
-    roll_number: "2300290130088",
-    student_name: "Rohan Verma",
-    branch: "ECE",
-    problem: "Cold and cough",
-    time: "09:45 AM",
-    status: "alarms_active",
-  },
-  {
-    id: "tp-2",
-    roll_number: "2200290110054",
-    student_name: "Priya Nair",
-    branch: "ME",
-    problem: "Stomach issue",
-    time: "10:15 AM",
-    status: "doses_confirmed",
-  },
-  {
-    id: "tp-3",
-    roll_number: "2400290100015",
-    student_name: "Kabir Singh",
-    branch: "EE",
-    problem: "Headache",
-    time: "11:00 AM",
-    status: "recovered",
-  },
-];
-
-let doctorAlerts: DoctorAlertItem[] = [
-  {
-    id: "alt-1",
-    student_id: "std-001",
-    student_name: "Aarav Sharma",
-    roll_number: "2200290120019",
-    problem: "Acute Viral Illness",
-    reason: "Worse",
-    side_effects_reported: "Persistent fever spike and severe fatigue on course end",
-    time: "32 mins ago",
-    acknowledged: false,
-    priority: "red",
-  },
-  {
-    id: "alt-2",
-    student_id: "std-002",
-    student_name: "Sneha Patel",
-    roll_number: "2100290100112",
-    problem: "Bronchial Congestion",
-    reason: "Side effect",
-    side_effects_reported: "Reported nausea, dizziness, and mild skin irritation",
-    time: "1 hour ago",
-    acknowledged: false,
-    priority: "red",
   },
 ];
 
 export class DoctorService {
   /**
-   * Fast autocomplete search by student roll number or name
+   * Deterministic Planned Timeline Generator
    */
-  static async searchStudents(query: string): Promise<StudentSearchResult[]> {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
+  static generateDoseTimeline(
+    pattern: "once" | "twice" | "thrice" | "night_only",
+    totalDoses: number,
+    tabletsPerDose: number,
+    mealRelation: "before" | "after" = "after",
+    studentMealTimes?: { breakfast: string; lunch: string; dinner: string }
+  ): PlannedTimelineSlot[] {
+    const slots: PlannedTimelineSlot[] = [];
+    const baseDate = new Date();
+    const dosesCount = Math.max(1, totalDoses);
 
-    return MOCK_STUDENTS.filter(
-      (s) =>
-        s.roll_number.toLowerCase().includes(q) ||
-        s.name.toLowerCase().includes(q)
-    ).map((s) => ({
-      id: s.id,
-      roll_number: s.roll_number,
-      name: s.name,
-      branch: s.branch,
-      year: s.year,
-    }));
-  }
-
-  /**
-   * Fetch complete student details by roll number with audit logging
-   */
-  static async getStudentByRoll(
-    rollNumber: string,
-    doctorId: string = "doc-verma"
-  ): Promise<StudentFullProfile | null> {
-    const student =
-      MOCK_STUDENTS.find(
-        (s) => s.roll_number.toLowerCase() === rollNumber.trim().toLowerCase()
-      ) || null;
-
-    if (student) {
-      this.logAudit({
-        actor_id: doctorId,
-        actor_role: "doctor",
-        action: "READ",
-        resource_type: "students",
-        resource_id: student.id,
-        description: `Doctor accessed clinical records for student ${student.roll_number}`,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    return student;
-  }
-
-  /**
-   * Fetch visit history for student (newest first)
-   */
-  static async getStudentHistory(studentId: string): Promise<VisitHistoryEntry[]> {
-    return MOCK_VISIT_HISTORY[studentId] || [];
-  }
-
-  /**
-   * Searchable medicine directory
-   */
-  static async getMedicines(): Promise<MedicineCatalogItem[]> {
-    return MOCK_MEDICINES;
-  }
-
-  /**
-   * Get pre-configured clinical presets
-   */
-  static async getPresets(): Promise<PrescriptionPreset[]> {
-    return MOCK_PRESETS;
-  }
-
-  /**
-   * Get list of patients treated today by this doctor
-   */
-  static async getTodayPatients(): Promise<TodayPatientItem[]> {
-    return todayPatients;
-  }
-
-  /**
-   * Get active red alerts for doctor's own patients
-   */
-  static async getAlerts(): Promise<DoctorAlertItem[]> {
-    return doctorAlerts;
-  }
-
-  /**
-   * Acknowledge/review red alert
-   */
-  static async markAlertReviewed(alertId: string): Promise<void> {
-    doctorAlerts = doctorAlerts.map((a) =>
-      a.id === alertId ? { ...a, acknowledged: true } : a
-    );
-  }
-
-  /**
-   * Compute exact day-by-day meal-anchored preview using student's meal schedule
-   * after = meal time + 30m, before = meal time - 30m
-   */
-  static calculateSchedulePreview(
-    medicines: PrescriptionRow[],
-    studentMealTimes: { breakfast: string; lunch: string; dinner: string } = DEFAULT_MEAL_TIMES
-  ): DaySchedulePreviewItem[] {
-    if (!medicines || medicines.length === 0) return [];
-
-    const maxDays = Math.max(...medicines.map((m) => m.number_of_days || 1));
-    const days: DaySchedulePreviewItem[] = [];
-
-    const helperOffsetTime = (timeHHMM: string, offsetMinutes: number): string => {
-      const [h, m] = timeHHMM.split(":").map(Number);
-      const totalMinutes = h * 60 + m + offsetMinutes;
-      const normalized = (totalMinutes + 1440) % 1440;
-      const hours = Math.floor(normalized / 60);
-      const mins = normalized % 60;
-      const ampm = hours >= 12 ? "PM" : "AM";
-      const displayHours = hours % 12 || 12;
-      return `${displayHours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")} ${ampm}`;
+    const defaultMealTimes = {
+      breakfast: "08:30:00",
+      lunch: "13:00:00",
+      dinner: "20:00:00",
     };
 
-    const mealSlotsOrder: ("breakfast" | "lunch" | "dinner")[] = [
-      "breakfast",
-      "lunch",
-      "dinner",
+    const effectiveMeals = studentMealTimes || defaultMealTimes;
+
+    const slotConfigs: { slot: ClinicalSlotName; time: string }[] = [
+      { slot: "morning", time: effectiveMeals.breakfast.slice(0, 5) || "08:00" },
+      { slot: "afternoon", time: effectiveMeals.lunch.slice(0, 5) || "13:30" },
+      { slot: "evening", time: "18:00" },
+      { slot: "night", time: effectiveMeals.dinner.slice(0, 5) || "20:30" },
     ];
 
-    for (let day = 1; day <= maxDays; day++) {
-      const activeMedicinesForDay = medicines.filter(
-        (m) => day <= (m.number_of_days || 1)
-      );
-      if (activeMedicinesForDay.length === 0) continue;
+    const currentHour = baseDate.getHours();
+    const currentMinute = baseDate.getMinutes();
+    const currentMinutesFromMidnight = currentHour * 60 + currentMinute;
 
-      const daySlots: DaySchedulePreviewItem["slots"] = [];
+    const formatDateStr = (date: Date): { display: string; target: string } => {
+      const isToday = date.toDateString() === baseDate.toDateString();
+      const tomorrow = new Date(baseDate);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const isTomorrow = date.toDateString() === tomorrow.toDateString();
 
-      for (const meal of mealSlotsOrder) {
-        // Collect medicines for this meal slot
-        const medsInSlot = activeMedicinesForDay.filter((m) =>
-          m.meal_slots.includes(meal)
-        );
+      const monthName = date.toLocaleDateString("en-US", { month: "short" });
+      const dayNum = date.getDate();
 
-        if (medsInSlot.length > 0) {
-          // Group by meal relation ('before' or 'after')
-          const relations: ("before" | "after")[] = ["before", "after"];
-          for (const rel of relations) {
-            const relMeds = medsInSlot.filter((m) => m.meal_relation === rel);
-            if (relMeds.length > 0) {
-              const baseTime = studentMealTimes[meal] || DEFAULT_MEAL_TIMES[meal];
-              const offset =
-                rel === "before"
-                  ? BEFORE_MEAL_OFFSET_MINUTES
-                  : AFTER_MEAL_OFFSET_MINUTES;
-              const formattedTime = helperOffsetTime(baseTime, offset);
+      let display = `${monthName} ${dayNum}`;
+      if (isToday) display = `Today, ${monthName} ${dayNum}`;
+      else if (isTomorrow) display = `Tomorrow, ${monthName} ${dayNum}`;
 
-              daySlots.push({
-                meal,
-                relation: rel,
-                timeStr: formattedTime,
-                medicines: relMeds.map((m) => ({
-                  name: m.medicine_name,
-                  dose: m.dose,
-                })),
-              });
-            }
-          }
+      const year = date.getFullYear();
+      const target = `${year}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+
+      return { display, target };
+    };
+
+    if (pattern === "once") {
+      for (let i = 0; i < dosesCount; i++) {
+        const slotDate = new Date(baseDate);
+        let dayOffset = i;
+        if (i === 0 && currentMinutesFromMidnight > 9 * 60) {
+          dayOffset = i + 1;
         }
+        slotDate.setDate(baseDate.getDate() + dayOffset);
+        const { display, target } = formatDateStr(slotDate);
+
+        slots.push({
+          id: `slot-${Date.now()}-${i}`,
+          slot_name: "morning",
+          time_hhmm: "08:00",
+          meal_relation: mealRelation,
+          day_offset: dayOffset,
+          date_display: display,
+          target_date: target,
+          tablets: tabletsPerDose,
+        });
       }
-
-      const dateObj = new Date();
-      dateObj.setDate(dateObj.getDate() + (day - 1));
-      const dateStr = dateObj.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-
-      days.push({
-        dayNumber: day,
-        dateStr,
-        slots: daySlots,
-      });
+      return slots;
     }
 
-    return days;
+    if (pattern === "night_only") {
+      for (let i = 0; i < dosesCount; i++) {
+        const slotDate = new Date(baseDate);
+        let dayOffset = i;
+        if (i === 0 && currentMinutesFromMidnight > 21 * 60) {
+          dayOffset = i + 1;
+        }
+        slotDate.setDate(baseDate.getDate() + dayOffset);
+        const { display, target } = formatDateStr(slotDate);
+
+        slots.push({
+          id: `slot-${Date.now()}-${i}`,
+          slot_name: "night",
+          time_hhmm: "20:30",
+          meal_relation: mealRelation,
+          day_offset: dayOffset,
+          date_display: display,
+          target_date: target,
+          tablets: tabletsPerDose,
+        });
+      }
+      return slots;
+    }
+
+    if (pattern === "twice") {
+      let dosesPlaced = 0;
+      let dayOffset = 0;
+
+      while (dosesPlaced < dosesCount) {
+        const targetDate = new Date(baseDate);
+        targetDate.setDate(baseDate.getDate() + dayOffset);
+        const { display, target } = formatDateStr(targetDate);
+
+        if (dayOffset > 0 || currentMinutesFromMidnight <= 10 * 60) {
+          slots.push({
+            id: `slot-${Date.now()}-${dosesPlaced}`,
+            slot_name: "morning",
+            time_hhmm: "08:00",
+            meal_relation: mealRelation,
+            day_offset: dayOffset,
+            date_display: display,
+            target_date: target,
+            tablets: tabletsPerDose,
+          });
+          dosesPlaced++;
+          if (dosesPlaced >= dosesCount) break;
+        }
+
+        if (dayOffset > 0 || currentMinutesFromMidnight <= 21 * 60) {
+          slots.push({
+            id: `slot-${Date.now()}-${dosesPlaced}`,
+            slot_name: "night",
+            time_hhmm: "20:30",
+            meal_relation: mealRelation,
+            day_offset: dayOffset,
+            date_display: display,
+            target_date: target,
+            tablets: tabletsPerDose,
+          });
+          dosesPlaced++;
+        }
+
+        dayOffset++;
+      }
+      return slots;
+    }
+
+    if (pattern === "thrice") {
+      let dosesPlaced = 0;
+      let dayOffset = 0;
+
+      while (dosesPlaced < dosesCount) {
+        const targetDate = new Date(baseDate);
+        targetDate.setDate(baseDate.getDate() + dayOffset);
+        const { display, target } = formatDateStr(targetDate);
+
+        if (dayOffset > 0 || currentMinutesFromMidnight <= 10 * 60) {
+          slots.push({
+            id: `slot-${Date.now()}-${dosesPlaced}`,
+            slot_name: "morning",
+            time_hhmm: "08:00",
+            meal_relation: mealRelation,
+            day_offset: dayOffset,
+            date_display: display,
+            target_date: target,
+            tablets: tabletsPerDose,
+          });
+          dosesPlaced++;
+          if (dosesPlaced >= dosesCount) break;
+        }
+
+        if (dayOffset > 0 || currentMinutesFromMidnight <= 14 * 60) {
+          slots.push({
+            id: `slot-${Date.now()}-${dosesPlaced}`,
+            slot_name: "afternoon",
+            time_hhmm: "13:30",
+            meal_relation: mealRelation,
+            day_offset: dayOffset,
+            date_display: display,
+            target_date: target,
+            tablets: tabletsPerDose,
+          });
+          dosesPlaced++;
+          if (dosesPlaced >= dosesCount) break;
+        }
+
+        if (dayOffset > 0 || currentMinutesFromMidnight <= 21 * 60) {
+          slots.push({
+            id: `slot-${Date.now()}-${dosesPlaced}`,
+            slot_name: "night",
+            time_hhmm: "20:30",
+            meal_relation: mealRelation,
+            day_offset: dayOffset,
+            date_display: display,
+            target_date: target,
+            tablets: tabletsPerDose,
+          });
+          dosesPlaced++;
+        }
+
+        dayOffset++;
+      }
+      return slots;
+    }
+
+    return slots;
+  }
+
+  static generateCombinedDayPreviews(
+    prescriptions: DoctorMedicinePrescription[]
+  ): DaySchedulePreviewItem[] {
+    const dayMap = new Map<string, { display: string; target: string; items: any[] }>();
+
+    for (const rx of prescriptions) {
+      for (const slot of rx.planned_timeline) {
+        if (!dayMap.has(slot.target_date)) {
+          dayMap.set(slot.target_date, {
+            display: slot.date_display,
+            target: slot.target_date,
+            items: [],
+          });
+        }
+
+        dayMap.get(slot.target_date)!.items.push({
+          medicine_name: rx.medicine_name,
+          slot_name: slot.slot_name,
+          time_hhmm: slot.time_hhmm,
+          tablets: slot.tablets || rx.tablets_per_dose,
+          meal_relation: slot.meal_relation,
+        });
+      }
+    }
+
+    const sortedDates = Array.from(dayMap.keys()).sort();
+
+    return sortedDates.map((targetDate, idx) => {
+      const entry = dayMap.get(targetDate)!;
+      entry.items.sort((a, b) => a.time_hhmm.localeCompare(b.time_hhmm));
+
+      return {
+        dayNumber: idx + 1,
+        dateStr: entry.display,
+        slots: entry.items.map((it) => ({
+          slot_name: it.slot_name as ClinicalSlotName,
+          timeStr: it.time_hhmm,
+          relation: it.meal_relation as "before" | "after",
+          tablets: it.tablets,
+          medicines: [
+            {
+              name: it.medicine_name,
+              dose: `${it.tablets} tab`,
+            },
+          ],
+        })),
+      };
+    });
+  }
+
+  static calculateSchedulePreview(
+    prescriptions: DoctorMedicinePrescription[]
+  ): DaySchedulePreviewItem[] {
+    return this.generateCombinedDayPreviews(prescriptions);
   }
 
   /**
-   * Check for allergy conflicts between medicines and student allergy list
+   * Fetch active formulary medicines catalog via API
    */
-  static checkAllergyConflict(
-    medicineName: string,
-    studentAllergies: string[]
-  ): string | null {
-    if (!medicineName || !studentAllergies || studentAllergies.length === 0)
-      return null;
-
-    const lowerMed = medicineName.toLowerCase();
-    for (const allergy of studentAllergies) {
-      const lowerAllergy = allergy.toLowerCase();
-      // Match common stems: e.g. penicillin, aspirin, paracetamol, sulfa
-      if (
-        lowerMed.includes(lowerAllergy) ||
-        lowerAllergy.includes(lowerMed) ||
-        (lowerAllergy.includes("penicillin") && lowerMed.includes("amoxicillin")) ||
-        (lowerAllergy.includes("aspirin") && lowerMed.includes("ibuprofen"))
-      ) {
-        return `ALLERGY WARNING: Student has documented allergy to "${allergy}". Ensure you do not prescribe conflicting compounds.`;
+  static async getMedicines(): Promise<MedicineCatalogItem[]> {
+    try {
+      const res = await fetch("/api/doctor/medicines", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.medicines || []).map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          default_dose: `1 ${m.default_form || "tablet"}`,
+          category: "Formulary",
+          stock_quantity: 200,
+          allergy_keywords: m.name.toLowerCase().includes("amox") ? ["penicillin"] : [],
+        }));
       }
+    } catch (e) {
+      console.warn("getMedicines API error:", e);
     }
+
+    return [
+      { id: "m1", name: "Paracetamol 650mg", default_dose: "1 tablet", category: "Analgesic", stock_quantity: 500, allergy_keywords: [] },
+      { id: "m2", name: "Pantoprazole 40mg", default_dose: "1 tablet", category: "Antacid", stock_quantity: 320, allergy_keywords: [] },
+      { id: "m3", name: "Cetirizine 10mg", default_dose: "1 tablet", category: "Antihistamine", stock_quantity: 240, allergy_keywords: [] },
+      { id: "m4", name: "Amoxicillin 500mg", default_dose: "1 capsule", category: "Antibiotic", stock_quantity: 180, allergy_keywords: ["penicillin", "amoxicillin"] },
+      { id: "m5", name: "ORS Electrolyte Sachet", default_dose: "1 sachet in 1L water", category: "Hydration", stock_quantity: 400, allergy_keywords: [] },
+      { id: "m6", name: "Azithromycin 500mg", default_dose: "1 tablet", category: "Antibiotic", stock_quantity: 150, allergy_keywords: ["macrolide"] },
+      { id: "m7", name: "Dextromethorphan Syrup", default_dose: "10ml", category: "Cough Suppressant", stock_quantity: 90, allergy_keywords: [] },
+      { id: "m8", name: "Ibuprofen 400mg", default_dose: "1 tablet", category: "NSAID", stock_quantity: 300, allergy_keywords: ["nsaid", "aspirin"] },
+      { id: "m9", name: "Domperidone 10mg", default_dose: "1 tablet", category: "Antiemetic", stock_quantity: 210, allergy_keywords: [] },
+    ];
+  }
+
+  static getPresets(): PrescriptionPreset[] {
+    return CLINICAL_PRESETS;
+  }
+
+  /**
+   * Search students for autocomplete with fast client-side caching
+   */
+  static async searchStudents(query: string): Promise<StudentSearchResult[]> {
+    if (!query || query.trim().length < 1) return [];
+    const normalized = query.trim().toLowerCase();
+
+    try {
+      const res = await fetch(`/api/doctor/students?query=${encodeURIComponent(query.trim())}`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.students || [];
+      }
+    } catch (e) {
+      console.warn("searchStudents API error:", e);
+    }
+    return [];
+  }
+
+  /**
+   * Fetch student profile by roll number via API
+   */
+  static async getStudentByRoll(rollNumber: string): Promise<StudentFullProfile | null> {
+    if (!rollNumber) return null;
+    try {
+      const res = await fetch(
+        `/api/doctor/students?rollNumber=${encodeURIComponent(rollNumber.trim())}`,
+        { cache: "no-store" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.student) {
+          const s = data.student;
+          const isDayScholar =
+            s.residence_type === "day_scholar" ||
+            s.residence_type === "Day Scholar" ||
+            s.hostel_status === "Day Scholar";
+
+          return {
+            id: s.id,
+            roll_number: s.roll_number,
+            name: s.name,
+            branch: s.branch,
+            year: s.year,
+            phone: s.phone || "+91 98765 43210",
+            hostel_status: isDayScholar ? "Day Scholar" : "Hosteler",
+            hostel_name: isDayScholar ? undefined : "Campus Hostel",
+            room_number: isDayScholar ? undefined : s.room_number || "—",
+            avatar_url: s.photo_path || "",
+            allergies: Array.isArray(s.allergies)
+              ? s.allergies
+              : typeof s.allergies === "string" && s.allergies
+              ? [s.allergies]
+              : ["NKDA (No Known Drug Allergies)"],
+            meal_times: s.meal_times || {
+              breakfast: "08:30:00",
+              lunch: "13:00:00",
+              dinner: "20:00:00",
+            },
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("getStudentByRoll API error:", e);
+    }
+
     return null;
   }
 
   /**
-   * Submit visit, generate dose_schedule, log audit, and send push notification
+   * Fetch past visit history for selected student
    */
-  static async submitVisit(
-    payload: VisitSubmissionPayload,
-    doctorId: string = "doc-verma",
-    doctorName: string = "Dr. Alok Verma"
-  ): Promise<{ success: boolean; visitId: string; message: string }> {
-    const visitId = `vst-${Date.now()}`;
-
-    // Add to history
-    if (!MOCK_VISIT_HISTORY[payload.student_id]) {
-      MOCK_VISIT_HISTORY[payload.student_id] = [];
+  static async getStudentHistory(studentId: string): Promise<VisitHistoryEntry[]> {
+    if (!studentId) return [];
+    try {
+      const res = await fetch(`/api/doctor/history?studentId=${encodeURIComponent(studentId)}`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.history || []).map((v: any) => ({
+          id: v.id,
+          date: new Date(v.visit_date).toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          }),
+          doctor_name: v.doctor_name || "Campus Doctor",
+          problem_category: v.problem_category,
+          notes: v.notes,
+          medicines: [],
+          outcome: v.status || "active",
+        }));
+      }
+    } catch (e) {
+      console.warn("getStudentHistory API error:", e);
     }
-
-    const newHistoryEntry: VisitHistoryEntry = {
-      id: visitId,
-      date: "Today, Just now",
-      doctor_name: doctorName,
-      problem_category: payload.problem_category,
-      notes: payload.clinical_notes,
-      medicines: payload.medicines.map((m) => ({
-        name: m.medicine_name,
-        dose: m.dose,
-        duration: `${m.number_of_days} days`,
-      })),
-      outcome: "active",
-    };
-
-    MOCK_VISIT_HISTORY[payload.student_id].unshift(newHistoryEntry);
-
-    // Add to Today's Patients
-    const student = MOCK_STUDENTS.find((s) => s.id === payload.student_id);
-    const newPatientEntry: TodayPatientItem = {
-      id: `tp-${Date.now()}`,
-      roll_number: payload.roll_number,
-      student_name: student?.name || "Student",
-      branch: student?.branch ? student.branch.split(" ")[0] : "KIET",
-      problem: payload.problem_category,
-      time: "Just now",
-      status: "alarms_active",
-    };
-
-    todayPatients.unshift(newPatientEntry);
-
-    // Audit Logging
-    this.logAudit({
-      actor_id: doctorId,
-      actor_role: "doctor",
-      action: "CREATE",
-      resource_type: "visits",
-      resource_id: visitId,
-      description: `Doctor recorded consultation & prescribed ${payload.medicines.length} medicines for roll ${payload.roll_number}`,
-      metadata: {
-        problem: payload.problem_category,
-        medicine_count: payload.medicines.length,
-        follow_up: payload.follow_up_date,
-      },
-      timestamp: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      visitId,
-      message: `Prescription saved. Schedule generated and pushed to ${student?.name || payload.roll_number}'s device.`,
-    };
+    return [];
   }
 
   /**
-   * Internal audit logger
+   * Fetch today's patients seen by authenticated doctor
    */
-  private static logAudit(entry: {
-    actor_id: string;
-    actor_role: string;
-    action: string;
-    resource_type: string;
-    resource_id?: string;
-    description: string;
-    metadata?: Record<string, unknown>;
-    timestamp: string;
-  }) {
-    console.log(`[AUDIT LOG] [${entry.timestamp}] ${entry.action} on ${entry.resource_type}: ${entry.description}`);
+  static async getTodayPatients(doctorId?: string): Promise<TodayPatientItem[]> {
+    try {
+      const res = await fetch("/api/doctor/today", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.todayPatients || []).map((p: any) => ({
+          id: p.id,
+          roll_number: p.roll_number,
+          student_name: p.student_name,
+          branch: "Campus",
+          problem: p.problem_category,
+          time: p.consultation_time,
+          status: p.status === "active" ? "alarms_active" : "doses_confirmed",
+        }));
+      }
+    } catch (e) {
+      console.warn("getTodayPatients API error:", e);
+    }
+    return [];
+  }
+
+  /**
+   * Fetch alerts for authenticated doctor
+   */
+  static async getAlerts(doctorId?: string): Promise<DoctorAlertItem[]> {
+    try {
+      const res = await fetch("/api/doctor/alerts", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.alerts || []).map((a: any) => ({
+          id: a.id,
+          student_id: a.student_id,
+          student_name: a.student_name,
+          roll_number: a.roll_number,
+          problem: a.problem_category,
+          reason: a.reason,
+          time: new Date(a.reported_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          acknowledged: a.status === "resolved",
+          priority: a.severity || "red",
+        }));
+      }
+    } catch (e) {
+      console.warn("getAlerts API error:", e);
+    }
+    return [];
+  }
+
+  /**
+   * Fetches full patient history records for doctor's consultations
+   */
+  static async getDoctorRecords(
+    doctorId: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<DoctorPatientRecord[]> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+
+      const res = await fetch(`/api/doctor/records?${params.toString()}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        return (data.records || []).map((r: any) => ({
+          id: r.id,
+          visit_date: r.visit_date,
+          student_name: r.student_name,
+          roll_number: r.roll_number,
+          branch: r.branch,
+          problem_category: r.problem_category,
+          clinical_notes: r.clinical_notes || "OPD consultation",
+          medications_summary: (r.medications || []).join(", "),
+          status: r.status,
+          recovery_response: r.recovery_response,
+          doses_confirmed_summary: r.doses_summary,
+        }));
+      }
+    } catch (e) {
+      console.warn("getDoctorRecords API error:", e);
+    }
+    return [];
+  }
+
+  /**
+   * Submits a full consultation visit and dose schedule via API
+   */
+  static async submitVisit(
+    payload: VisitSubmissionPayload,
+    doctorId?: string
+  ): Promise<{ success: boolean; visitId: string; message: string }> {
+    const res = await fetch("/api/doctor/consultation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to record consultation");
+    }
+
+    const data = await res.json();
+    return data;
+  }
+
+  static async recordVisitAndPrescription(
+    payload: VisitSubmissionPayload,
+    doctorId?: string
+  ): Promise<{ success: boolean; visitId: string; message: string }> {
+    return this.submitVisit(payload, doctorId);
   }
 }

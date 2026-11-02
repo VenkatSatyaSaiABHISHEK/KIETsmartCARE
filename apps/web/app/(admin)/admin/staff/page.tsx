@@ -1,20 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Users,
-  UserPlus,
-  Search,
-  Filter,
-  KeyRound,
-  UserCheck,
-  UserX,
-  RefreshCw,
-  Stethoscope,
-  Eye,
-  ShieldAlert,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { StaffMember } from "@/lib/admin/types";
 import { CreateStaffModal } from "../components/CreateStaffModal";
 import { OneTimePasswordModal } from "../components/OneTimePasswordModal";
@@ -61,368 +47,244 @@ export default function StaffManagementPage() {
     onConfirm: () => {},
   });
 
-  const fetchStaff = async () => {
+  const loadStaff = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (roleFilter !== "all") params.append("role", roleFilter);
-
-      const res = await fetch(`/api/admin/staff?${params.toString()}`);
+      const res = await fetch("/api/admin/staff");
       const data = await res.json();
       setStaff(data.staff || []);
-    } catch {
-      // Handle error
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStaff();
-  }, [roleFilter]);
+    loadStaff();
+  }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchStaff();
-  };
-
-  const handleCreateSuccess = (newStaff: StaffMember, temporaryPassword: string) => {
-    setOtpModalData({
-      isOpen: true,
-      title: "Staff Account Created",
-      recipientName: newStaff.name,
-      identifier: newStaff.email,
-      identifierLabel: "Institutional Email",
-      temporaryPassword,
-      roleOrNote: newStaff.role === "doctor" ? "Campus Doctor" : "Campus Health Officer",
-    });
-    fetchStaff();
-  };
-
-  const handleResetPassword = async (member: StaffMember) => {
-    setConfirmModalData({
-      isOpen: true,
-      title: "Reset Staff Password",
-      description: `Generate a new one-time temporary password for ${member.name} (${member.email})? The existing password will be revoked immediately.`,
-      confirmLabel: "Generate Temporary Password",
-      isDestructive: false,
-      onConfirm: async () => {
-        try {
-          const res = await fetch("/api/admin/staff", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: member.id }),
-          });
-          const data = await res.json();
-          if (res.ok) {
-            setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
-            setOtpModalData({
-              isOpen: true,
-              title: "Temporary Password Reset",
-              recipientName: member.name,
-              identifier: member.email,
-              identifierLabel: "Institutional Email",
-              temporaryPassword: data.temporary_password,
-              roleOrNote: member.role,
-            });
-            fetchStaff();
-          }
-        } catch {
-          // Handle error
-        }
-      },
-    });
+  const handleCreated = (data: {
+    staff: StaffMember;
+    temporaryPassword?: string;
+  }) => {
+    setIsCreateOpen(false);
+    loadStaff();
+    if (data.temporaryPassword) {
+      setOtpModalData({
+        isOpen: true,
+        title: "Staff Account Created",
+        recipientName: data.staff.name,
+        identifier: data.staff.email,
+        identifierLabel: "Institutional Email",
+        temporaryPassword: data.temporaryPassword,
+        roleOrNote: `${data.staff.role.toUpperCase()} Account Created`,
+      });
+    }
   };
 
   const handleToggleStatus = (member: StaffMember) => {
-    const isDisabling = member.status === "active";
+    const isSuspending = member.status === "active";
     setConfirmModalData({
       isOpen: true,
-      title: isDisabling ? "Disable Staff Account" : "Re-Enable Staff Account",
-      description: isDisabling
-        ? `Are you sure you want to disable ${member.name}? They will immediately lose access to the ${member.role === "doctor" ? "Doctor OPD Portal" : "Health Officer Portal"}.`
-        : `Re-enable account for ${member.name}? They will be permitted to authenticate again.`,
-      confirmLabel: isDisabling ? "Disable Account" : "Enable Account",
-      isDestructive: isDisabling,
+      title: isSuspending ? "Suspend Staff Access" : "Reinstate Staff Access",
+      description: isSuspending
+        ? `Are you sure you want to suspend access for ${member.name} (${member.email})? They will be unable to log in to their clinical portal.`
+        : `Reinstate portal access for ${member.name}?`,
+      confirmLabel: isSuspending ? "Suspend Access" : "Reinstate Access",
+      isDestructive: isSuspending,
       onConfirm: async () => {
-        try {
-          const res = await fetch("/api/admin/staff", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: member.id,
-              status: isDisabling ? "disabled" : "active",
-            }),
-          });
-          if (res.ok) {
-            setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
-            fetchStaff();
-          }
-        } catch {
-          // Handle error
-        }
+        await fetch("/api/admin/staff", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: member.id,
+            status: isSuspending ? "inactive" : "active",
+          }),
+        });
+        setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+        loadStaff();
       },
     });
   };
 
-  const handleChangeRole = (member: StaffMember) => {
-    const newRole = member.role === "doctor" ? "officer" : "doctor";
+  const handleResetPassword = (member: StaffMember) => {
     setConfirmModalData({
       isOpen: true,
-      title: "Change Account Role",
-      description: `Switch ${member.name}'s role from ${member.role} to ${newRole}? This modifies their portal permissions upon their next session refresh.`,
-      confirmLabel: `Change to ${newRole}`,
+      title: "Generate One-Time Password",
+      description: `Reset authentication credentials for ${member.name}? A temporary password will be generated.`,
+      confirmLabel: "Generate OTP",
       isDestructive: false,
       onConfirm: async () => {
-        try {
-          const res = await fetch("/api/admin/staff", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: member.id,
-              role: newRole,
-            }),
+        const res = await fetch("/api/admin/staff", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "reset_password",
+            id: member.id,
+          }),
+        });
+        const data = await res.json();
+        setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
+        if (data.temporaryPassword) {
+          setOtpModalData({
+            isOpen: true,
+            title: "Temporary Password Issued",
+            recipientName: member.name,
+            identifier: member.email,
+            identifierLabel: "Email",
+            temporaryPassword: data.temporaryPassword,
+            roleOrNote: "Password Reset Complete",
           });
-          if (res.ok) {
-            setConfirmModalData((prev) => ({ ...prev, isOpen: false }));
-            fetchStaff();
-          }
-        } catch {
-          // Handle error
         }
       },
     });
   };
 
+  const filteredStaff = staff.filter((s) => {
+    const matchSearch =
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.email.toLowerCase().includes(search.toLowerCase());
+    const matchRole = roleFilter === "all" || s.role === roleFilter;
+    return matchSearch && matchRole;
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#E5E5E5] pb-5">
+      <div className="flex items-baseline justify-between border-b border-[#E4E4E7] pb-6">
         <div>
-          <h1 className="text-xl font-bold uppercase tracking-tight text-black">
-            Staff Account Management
-          </h1>
-          <p className="mt-1 text-xs text-neutral-500">
-            Provision and manage Campus Doctors and Health Officers via Supabase Service Role Key
+          <h1 className="text-2xl font-semibold text-[#09090B]">Staff Accounts</h1>
+          <p className="text-xs text-[#71717A] mt-1">
+            Provision and manage credentials for OPD Doctors and Campus Health Officers.
           </p>
         </div>
-        <Button
+
+        <button
+          type="button"
           onClick={() => setIsCreateOpen(true)}
-          className="rounded-lg bg-black text-white hover:bg-neutral-800 text-xs font-semibold px-4 h-9"
+          className="h-10 px-4 rounded bg-[#09090B] text-white text-xs font-medium hover:bg-neutral-800 transition-colors"
         >
-          <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Provision New Staff
-        </Button>
+          Add Staff Member
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-lg border border-[#E5E5E5] bg-white p-3 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Search by name, email, or phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-[#E5E5E5] pl-8 pr-3 py-1.5 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none"
-          />
-        </form>
+      <div className="flex items-center gap-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or email..."
+          className="h-10 px-3 w-80 text-xs rounded border border-[#E4E4E7] bg-white focus:outline-none focus:border-[#09090B]"
+        />
 
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          <span className="text-xs text-neutral-500 font-medium">Role:</span>
-          <div className="flex rounded-lg border border-[#E5E5E5] p-0.5 bg-neutral-100">
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-[#71717A]">Role:</span>
+          {(["all", "doctor", "officer"] as const).map((r) => (
             <button
-              onClick={() => setRoleFilter("all")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                roleFilter === "all"
-                  ? "bg-white text-black shadow-sm"
-                  : "text-neutral-600 hover:text-black"
+              key={r}
+              type="button"
+              onClick={() => setRoleFilter(r)}
+              className={`px-2.5 py-1 rounded text-xs transition-colors ${
+                roleFilter === r
+                  ? "bg-[#09090B] text-white font-medium"
+                  : "text-[#71717A] hover:text-[#09090B] border border-[#E4E4E7]"
               }`}
             >
-              All
+              {r === "all" ? "All Roles" : r.charAt(0).toUpperCase() + r.slice(1)}
             </button>
-            <button
-              onClick={() => setRoleFilter("doctor")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                roleFilter === "doctor"
-                  ? "bg-white text-black shadow-sm"
-                  : "text-neutral-600 hover:text-black"
-              }`}
-            >
-              Doctors
-            </button>
-            <button
-              onClick={() => setRoleFilter("officer")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                roleFilter === "officer"
-                  ? "bg-white text-black shadow-sm"
-                  : "text-neutral-600 hover:text-black"
-              }`}
-            >
-              Officers
-            </button>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchStaff}
-            className="rounded-lg border-[#E5E5E5] text-xs h-8"
-          >
-            <RefreshCw className="h-3 w-3" />
-          </Button>
+          ))}
         </div>
       </div>
 
-      {/* Staff Table */}
-      <div className="rounded-lg border border-[#E5E5E5] bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-neutral-50 border-b border-[#E5E5E5] text-[11px] uppercase font-semibold text-neutral-600 tracking-wider">
+      {/* Clean Table */}
+      <div className="border border-[#E4E4E7] rounded overflow-hidden">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-[#FAFAFA] border-b border-[#E4E4E7] text-[11px] uppercase tracking-wider text-[#71717A]">
+            <tr>
+              <th className="py-3 px-4 font-medium">Name</th>
+              <th className="py-3 px-4 font-medium">Email</th>
+              <th className="py-3 px-4 font-medium">Role</th>
+              <th className="py-3 px-4 font-medium">Status</th>
+              <th className="py-3 px-4 font-medium">Created</th>
+              <th className="py-3 px-4 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E4E4E7]">
+            {filteredStaff.length === 0 ? (
               <tr>
-                <th className="px-4 py-3">Staff Member</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Contact</th>
-                <th className="px-4 py-3">Created / Active</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                <td colSpan={6} className="py-12 text-center text-xs text-[#71717A]">
+                  No staff members match the current filter.
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-[#E5E5E5]">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
-                    Loading staff directory...
+            ) : (
+              filteredStaff.map((s) => (
+                <tr key={s.id} className="h-12 hover:bg-[#FAFAFA] transition-colors">
+                  <td className="py-3 px-4 font-medium text-[#09090B]">{s.name}</td>
+                  <td className="py-3 px-4 font-mono text-[#71717A]">{s.email}</td>
+                  <td className="py-3 px-4 uppercase text-2xs font-semibold text-[#09090B]">
+                    {s.role}
+                  </td>
+                  <td className="py-3 px-4 text-xs font-medium text-[#09090B]">
+                    {s.status === "active" ? "Active" : "Inactive"}
+                  </td>
+                  <td className="py-3 px-4 text-[#71717A]">
+                    {new Date(s.created_at).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="py-3 px-4 text-right space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => handleResetPassword(s)}
+                      className="text-xs text-[#09090B] hover:underline"
+                    >
+                      Reset password
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleStatus(s)}
+                      className={`text-xs hover:underline ${
+                        s.status === "active" ? "text-[#DC2626]" : "text-[#09090B]"
+                      }`}
+                    >
+                      {s.status === "active" ? "Suspend" : "Reinstate"}
+                    </button>
                   </td>
                 </tr>
-              ) : staff.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
-                    No staff accounts found matching your query.
-                  </td>
-                </tr>
-              ) : (
-                staff.map((member) => (
-                  <tr key={member.id} className="hover:bg-neutral-50/70 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-black">{member.name}</div>
-                      <div className="text-[11px] text-neutral-500 font-mono">{member.email}</div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {member.role === "doctor" ? (
-                        <span className="inline-flex items-center rounded border border-[#E5E5E5] bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-black uppercase tracking-wider">
-                          <Stethoscope className="mr-1 h-3 w-3" /> Doctor
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded border border-[#E5E5E5] bg-neutral-100 px-2 py-0.5 text-[10px] font-bold text-black uppercase tracking-wider">
-                          <Eye className="mr-1 h-3 w-3" /> Officer
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      {member.status === "active" ? (
-                        <span className="inline-flex items-center text-[11px] font-medium text-black">
-                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-black"></span>
-                          Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center text-[11px] font-medium text-neutral-400">
-                          <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-neutral-400"></span>
-                          Disabled
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className="font-mono text-[11px] text-neutral-700">{member.phone}</div>
-                    </td>
-
-                    <td className="px-4 py-3 text-[11px] text-neutral-500">
-                      <div>Created: {new Date(member.created_at).toLocaleDateString()}</div>
-                      {member.last_active && (
-                        <div className="text-[10px] text-neutral-400">
-                          Active: {new Date(member.last_active).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleResetPassword(member)}
-                          title="Generate new temporary password"
-                          className="rounded-lg border-[#E5E5E5] text-[11px] h-7 px-2"
-                        >
-                          <KeyRound className="h-3 w-3 mr-1" /> Reset Pass
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleChangeRole(member)}
-                          title="Switch role"
-                          className="rounded-lg border-[#E5E5E5] text-[11px] h-7 px-2"
-                        >
-                          Role
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleStatus(member)}
-                          title={member.status === "active" ? "Disable staff" : "Enable staff"}
-                          className={`rounded-lg border-[#E5E5E5] text-[11px] h-7 px-2 ${
-                            member.status === "active"
-                              ? "hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-                              : "hover:bg-black hover:text-white"
-                          }`}
-                        >
-                          {member.status === "active" ? (
-                            <UserX className="h-3 w-3" />
-                          ) : (
-                            <UserCheck className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Modals */}
       <CreateStaffModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        onSuccess={handleCreateSuccess}
+        onSuccess={(staff, temporaryPassword) => handleCreated({ staff, temporaryPassword })}
+      />
+
+      <ConfirmActionModal
+        isOpen={confirmModalData.isOpen}
+        onClose={() => setConfirmModalData((prev) => ({ ...prev, isOpen: false }))}
+        title={confirmModalData.title}
+        description={confirmModalData.description}
+        confirmLabel={confirmModalData.confirmLabel}
+        isDestructive={confirmModalData.isDestructive}
+        onConfirm={confirmModalData.onConfirm}
       />
 
       <OneTimePasswordModal
         isOpen={otpModalData.isOpen}
-        onClose={() => setOtpModalData({ ...otpModalData, isOpen: false })}
+        onClose={() => setOtpModalData((prev) => ({ ...prev, isOpen: false }))}
         title={otpModalData.title}
         recipientName={otpModalData.recipientName}
         identifier={otpModalData.identifier}
         identifierLabel={otpModalData.identifierLabel}
         temporaryPassword={otpModalData.temporaryPassword}
         roleOrNote={otpModalData.roleOrNote}
-      />
-
-      <ConfirmActionModal
-        isOpen={confirmModalData.isOpen}
-        onClose={() => setConfirmModalData({ ...confirmModalData, isOpen: false })}
-        onConfirm={confirmModalData.onConfirm}
-        title={confirmModalData.title}
-        description={confirmModalData.description}
-        confirmLabel={confirmModalData.confirmLabel}
-        isDestructive={confirmModalData.isDestructive}
       />
     </div>
   );

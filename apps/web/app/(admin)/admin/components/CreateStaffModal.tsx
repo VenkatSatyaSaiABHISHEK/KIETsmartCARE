@@ -16,6 +16,10 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [qualification, setQualification] = useState("MBBS, MD");
+  const [designation, setDesignation] = useState("Campus Clinic OPD Doctor");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +42,15 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
       setError("Phone number must be exactly 10 digits");
       return;
     }
+    const cleanPin = pin.trim();
+    if (!/^\d{5}$/.test(cleanPin)) {
+      setError("PIN must be exactly 5 numeric digits (e.g. 12345)");
+      return;
+    }
+    if (cleanPin !== confirmPin.trim()) {
+      setError("PINs do not match. Please re-enter.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -49,6 +62,9 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
           name: name.trim(),
           email: email.trim(),
           phone: cleanPhone,
+          pin: cleanPin,
+          qualification: role === "doctor" ? qualification.trim() : undefined,
+          designation: role === "doctor" ? designation.trim() : undefined,
         }),
       });
 
@@ -57,12 +73,14 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
         throw new Error(data.error || "Failed to create staff member");
       }
 
-      onSuccess(data.staff, data.temporary_password);
+      onSuccess(data.staff, cleanPin);
       onClose();
       // Reset form
       setName("");
       setEmail("");
       setPhone("");
+      setPin("");
+      setConfirmPin("");
     } catch (err: any) {
       setError(err?.message || "Failed to provision staff account");
     } finally {
@@ -187,8 +205,72 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
             />
           </div>
 
+          {role === "doctor" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-neutral-700 uppercase tracking-wider mb-1">
+                  Qualifications
+                </label>
+                <input
+                  type="text"
+                  placeholder="MBBS, MD"
+                  value={qualification}
+                  onChange={(e) => setQualification(e.target.value)}
+                  className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-neutral-700 uppercase tracking-wider mb-1">
+                  Designation / Specialization
+                </label>
+                <input
+                  type="text"
+                  placeholder="Campus Clinic OPD Doctor"
+                  value={designation}
+                  onChange={(e) => setDesignation(e.target.value)}
+                  className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-semibold text-neutral-700 uppercase tracking-wider mb-1">
+                Assign 5-Digit Login PIN
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="5 digits (e.g. 12345)"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none font-mono tracking-widest"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-neutral-700 uppercase tracking-wider mb-1">
+                Confirm 5-Digit PIN
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="Confirm PIN"
+                value={confirmPin}
+                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ""))}
+                className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none font-mono tracking-widest"
+                required
+              />
+            </div>
+          </div>
+
           <div className="rounded-lg border border-[#E5E5E5] bg-neutral-50 p-2.5 text-[11px] text-neutral-600">
-            A temporary password will be randomly generated and revealed once upon creation.
+            The assigned 5-digit PIN will be cryptographically hashed (bcrypt) and saved directly for immediate portal login.
           </div>
 
           <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[#E5E5E5]">

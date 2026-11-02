@@ -25,10 +25,11 @@ export function AdminHeader() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "logout" }),
       });
-      router.push("/admin/login");
-      router.refresh();
+      document.cookie = "kiet_user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "kiet_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      window.location.href = "/";
     } catch {
-      router.push("/admin/login");
+      window.location.href = "/";
     }
   };
 

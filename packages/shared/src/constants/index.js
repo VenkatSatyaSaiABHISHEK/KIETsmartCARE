@@ -1,5 +1,12 @@
 export const USER_ROLES = ['admin', 'doctor', 'officer', 'student'];
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
+export const CLINICAL_DOSE_SLOTS = ['morning', 'afternoon', 'evening', 'night'];
+export const DEFAULT_SLOT_TIMES = {
+    morning: '08:00',
+    afternoon: '13:30',
+    evening: '17:00',
+    night: '20:30',
+};
 export const MEAL_RELATIONS = ['before', 'after'];
 export const DEFAULT_MEAL_TIMES = {
     breakfast: '08:00',

@@ -1,275 +1,604 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  StudentFullProfile,
-  VisitHistoryEntry,
-  MedicineCatalogItem,
-  PrescriptionPreset,
-  PrescriptionRow,
-  TodayPatientItem,
-  DoctorAlertItem,
-  DaySchedulePreviewItem,
-} from "@/lib/doctor/types";
+import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { StudentFullProfile, VisitHistoryEntry } from "@/lib/doctor/types";
 import { DoctorService } from "@/lib/doctor/service";
-import { DoctorHeader } from "./components/DoctorHeader";
-import { StudentSearchBox } from "./components/StudentSearchBox";
-import { StudentInfoPanel } from "./components/StudentInfoPanel";
-import { NewVisitPanel } from "./components/NewVisitPanel";
-import { ScheduleReviewModal } from "./components/ScheduleReviewModal";
-import { TodayPatientsView } from "./components/TodayPatientsView";
-import { DoctorAlertsView } from "./components/DoctorAlertsView";
+import { IdleHomeScreen } from "./components/IdleHomeScreen";
+import { StudentCard } from "./components/StudentCard";
 import {
-  CheckCircle2,
-  Stethoscope,
-  X,
-  Sparkles,
-  AlertCircle,
-} from "lucide-react";
+  TabletPrescriptionForm,
+  TabletGroupState,
+  ScheduledDoseItem,
+} from "./components/TabletPrescriptionForm";
+import { FloatingBottomBar } from "./components/FloatingBottomBar";
+import { ReviewModal } from "./components/ReviewModal";
 
-export default function DoctorPortalPage() {
-  // Navigation tab: 'desk' | 'today' | 'alerts'
-  const [activeTab, setActiveTab] = useState<"desk" | "today" | "alerts">("desk");
+export const dynamic = "force-dynamic";
 
-  // Catalog and Presets
-  const [medicinesCatalog, setMedicinesCatalog] = useState<MedicineCatalogItem[]>([]);
-  const [presets, setPresets] = useState<PrescriptionPreset[]>([]);
-  const [todayPatients, setTodayPatients] = useState<TodayPatientItem[]>([]);
-  const [doctorAlerts, setDoctorAlerts] = useState<DoctorAlertItem[]>([]);
+function DoctorPortalContent() {
+  const searchParams = useSearchParams();
+  const initialRoll = searchParams.get("roll");
 
-  // Active student in Consultation Desk
+  // Active student state
   const [activeStudent, setActiveStudent] = useState<StudentFullProfile | null>(null);
-  const [studentHistory, setStudentHistory] = useState<VisitHistoryEntry[]>([]);
-  const [isSearchingStudent, setIsSearchingStudent] = useState(false);
+  const [recentVisits, setRecentVisits] = useState<VisitHistoryEntry[]>([]);
+  const [isLoadingStudent, setIsLoadingStudent] = useState(false);
 
-  // New Visit Form State
-  const [problemCategory, setProblemCategory] = useState<string>("");
-  const [clinicalNotes, setClinicalNotes] = useState<string>("");
-  const [medicineRows, setMedicineRows] = useState<PrescriptionRow[]>([]);
-  const [followUpDate, setFollowUpDate] = useState<string>("");
+  // Unsaved changes confirmation dialog
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
+  const [pendingRollNumber, setPendingRollNumber] = useState<string | null>(null);
 
-  // Review Modal State
+  // Top Search in Consultation Mode
+  const [compactSearchVal, setCompactSearchVal] = useState("");
+  const [compactSearchResults, setCompactSearchResults] = useState<any[]>([]);
+
+  // Quiet Consultation Timer (ticking every second from 00:00)
+  const [consultationSeconds, setConsultationSeconds] = useState(0);
+
+  // Prescription Form State
+  const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
+  const [otherProblemText, setOtherProblemText] = useState("");
+  const [tabletGroups, setTabletGroups] = useState<TabletGroupState[]>([
+    {
+      id: "tablet-1",
+      label: "Tablet 1",
+      tabletsPerDose: 1,
+      totalDoses: 3,
+      schedule: [
+        {
+          id: "dose-1",
+          slot: "morning",
+          timeStr: "08:00",
+          mealRelation: "after",
+          dayLabel: "Today",
+          dateStr: new Date().toISOString().slice(0, 10),
+          displayLabel: "Today morning, after food",
+        },
+        {
+          id: "dose-2",
+          slot: "afternoon",
+          timeStr: "13:30",
+          mealRelation: "after",
+          dayLabel: "Today",
+          dateStr: new Date().toISOString().slice(0, 10),
+          displayLabel: "Today afternoon, after food",
+        },
+        {
+          id: "dose-3",
+          slot: "night",
+          timeStr: "20:30",
+          mealRelation: "after",
+          dayLabel: "Today",
+          dateStr: new Date().toISOString().slice(0, 10),
+          displayLabel: "Today night, after food",
+        },
+      ],
+    },
+  ]);
+
+  const [followUp, setFollowUp] = useState<string>("none");
+  const [customFollowUpDate, setCustomFollowUpDate] = useState<string>("");
+
+  // Review & Submit State
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [schedulePreview, setSchedulePreview] = useState<DaySchedulePreviewItem[]>([]);
+  const [confirmationBanner, setConfirmationBanner] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
-  // Submission Success Notification
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Load initial catalog, presets, today patients, and alerts
+  // Timer Effect
   useEffect(() => {
-    async function loadInitialData() {
-      const [meds, pre, today, alerts] = await Promise.all([
-        DoctorService.getMedicines(),
-        DoctorService.getPresets(),
-        DoctorService.getTodayPatients(),
-        DoctorService.getAlerts(),
-      ]);
-      setMedicinesCatalog(meds);
-      setPresets(pre);
-      setTodayPatients(today);
-      setDoctorAlerts(alerts);
+    let interval: NodeJS.Timeout | null = null;
+    if (activeStudent) {
+      setConsultationSeconds(0);
+      interval = setInterval(() => {
+        setConsultationSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setConsultationSeconds(0);
     }
-    loadInitialData();
-  }, []);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeStudent]);
 
-  // Handler: Select and load student by roll number
-  const handleSelectStudent = useCallback(async (rollNumber: string) => {
-    setIsSearchingStudent(true);
-    setSuccessMessage(null);
-    try {
-      const student = await DoctorService.getStudentByRoll(rollNumber);
-      if (student) {
-        setActiveStudent(student);
-        const history = await DoctorService.getStudentHistory(student.id);
-        setStudentHistory(history);
-
-        // Reset form for fresh prescription
-        setProblemCategory("");
-        setClinicalNotes("");
-        setMedicineRows([]);
-        setFollowUpDate("");
-      } else {
-        alert(`No student found for roll number: ${rollNumber}`);
-      }
-    } finally {
-      setIsSearchingStudent(false);
-    }
-  }, []);
-
-  // Handler: Trigger Review Modal
-  const handleOpenReview = () => {
-    if (!activeStudent) return;
-    const preview = DoctorService.calculateSchedulePreview(
-      medicineRows,
-      activeStudent.meal_times
-    );
-    setSchedulePreview(preview);
-    setIsReviewOpen(true);
+  const formatTimer = (totalSecs: number): string => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  // Handler: Submit Visit and Reset
-  const handleSubmitVisit = async () => {
-    if (!activeStudent) return;
+  // Check if form has unsaved work
+  const hasUnsavedChanges = (): boolean => {
+    return (
+      selectedProblems.length > 0 ||
+      tabletGroups.length > 1 ||
+      tabletGroups[0].totalDoses !== 3 ||
+      tabletGroups[0].tabletsPerDose !== 1 ||
+      followUp !== "none"
+    );
+  };
+
+  // Load student profile & past visits
+  const handleOpenStudent = useCallback(
+    async (rollNumber: string, force = false) => {
+      if (!force && activeStudent && hasUnsavedChanges()) {
+        setPendingRollNumber(rollNumber);
+        setIsDiscardDialogOpen(true);
+        return;
+      }
+
+      setIsLoadingStudent(true);
+      setSubmissionError(null);
+      setConfirmationBanner(null);
+
+      try {
+        const student = await DoctorService.getStudentByRoll(rollNumber);
+        if (student) {
+          setActiveStudent(student);
+          // Load past visits
+          const history = await DoctorService.getStudentHistory(student.id);
+          setRecentVisits(history);
+
+          // Reset form to clean default
+          setSelectedProblems([]);
+          setOtherProblemText("");
+          setTabletGroups([
+            {
+              id: "tablet-1",
+              label: "Tablet 1",
+              tabletsPerDose: 1,
+              totalDoses: 3,
+              schedule: [
+                {
+                  id: "dose-1",
+                  slot: "morning",
+                  timeStr: "08:00",
+                  mealRelation: "after",
+                  dayLabel: "Today",
+                  dateStr: new Date().toISOString().slice(0, 10),
+                  displayLabel: "Today morning, after food",
+                },
+                {
+                  id: "dose-2",
+                  slot: "afternoon",
+                  timeStr: "13:30",
+                  mealRelation: "after",
+                  dayLabel: "Today",
+                  dateStr: new Date().toISOString().slice(0, 10),
+                  displayLabel: "Today afternoon, after food",
+                },
+                {
+                  id: "dose-3",
+                  slot: "night",
+                  timeStr: "20:30",
+                  mealRelation: "after",
+                  dayLabel: "Today",
+                  dateStr: new Date().toISOString().slice(0, 10),
+                  displayLabel: "Today night, after food",
+                },
+              ],
+            },
+          ]);
+          setFollowUp("none");
+          setCustomFollowUpDate("");
+          setIsReviewOpen(false);
+          setCompactSearchVal("");
+        } else {
+          setSubmissionError("No student found for that roll number.");
+        }
+      } catch (err) {
+        console.warn("Failed to load student:", err);
+      } finally {
+        setIsLoadingStudent(false);
+      }
+    },
+    [activeStudent]
+  );
+
+  const confirmDiscardAndOpen = () => {
+    setIsDiscardDialogOpen(false);
+    if (pendingRollNumber) {
+      handleOpenStudent(pendingRollNumber, true);
+      setPendingRollNumber(null);
+    }
+  };
+
+  const cancelDiscard = () => {
+    setIsDiscardDialogOpen(false);
+    setPendingRollNumber(null);
+  };
+
+  // Compact Search autocomplete in consultation mode
+  useEffect(() => {
+    if (!compactSearchVal.trim()) {
+      setCompactSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await DoctorService.searchStudents(compactSearchVal.trim());
+        setCompactSearchResults(results);
+      } catch {
+        setCompactSearchResults([]);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [compactSearchVal]);
+
+  // Problem toggle handler
+  const handleToggleProblem = (problem: string) => {
+    setSelectedProblems((prev) =>
+      prev.includes(problem) ? prev.filter((p) => p !== problem) : [...prev, problem]
+    );
+  };
+
+  // Tablet Groups Handlers
+  const handleUpdateTabletGroup = (index: number, updated: TabletGroupState) => {
+    setTabletGroups((prev) => {
+      const copy = [...prev];
+      copy[index] = updated;
+      return copy;
+    });
+  };
+
+  const handleAddTabletGroup = () => {
+    if (tabletGroups.length >= 4) return;
+    const nextNum = tabletGroups.length + 1;
+    const newGroup: TabletGroupState = {
+      id: `tablet-${nextNum}`,
+      label: `Tablet ${nextNum}`,
+      tabletsPerDose: 1,
+      totalDoses: 2,
+      schedule: [
+        {
+          id: `dose-${nextNum}-1`,
+          slot: "morning",
+          timeStr: "08:00",
+          mealRelation: "after",
+          dayLabel: "Today",
+          dateStr: new Date().toISOString().slice(0, 10),
+          displayLabel: "Today morning, after food",
+        },
+        {
+          id: `dose-${nextNum}-2`,
+          slot: "night",
+          timeStr: "20:30",
+          mealRelation: "after",
+          dayLabel: "Today",
+          dateStr: new Date().toISOString().slice(0, 10),
+          displayLabel: "Today night, after food",
+        },
+      ],
+    };
+    setTabletGroups((prev) => [...prev, newGroup]);
+  };
+
+  const handleRemoveTabletGroup = (index: number) => {
+    if (tabletGroups.length <= 1) return;
+    setTabletGroups((prev) => {
+      const filtered = prev.filter((_, idx) => idx !== index);
+      // Re-label cleanly
+      return filtered.map((g, idx) => ({
+        ...g,
+        label: `Tablet ${idx + 1}`,
+      }));
+    });
+  };
+
+  // Follow-up handler
+  const handleChangeFollowUp = (val: string, customDate?: string) => {
+    setFollowUp(val);
+    if (customDate) setCustomFollowUpDate(customDate);
+  };
+
+  // Calculate real summary text for bottom bar
+  const generateSummaryText = (): string => {
+    const problemsStr = selectedProblems.join(", ");
+    const tabletsSummary = tabletGroups
+      .map((g) => `${g.label}: ${g.tabletsPerDose} per dose, ${g.totalDoses} doses`)
+      .join("; ");
+
+    if (problemsStr && tabletsSummary) {
+      return `${problemsStr}, ${tabletsSummary}`;
+    }
+    if (problemsStr) return problemsStr;
+    if (tabletsSummary) return tabletsSummary;
+    return "";
+  };
+
+  const isReadyToReview =
+    selectedProblems.length > 0 &&
+    tabletGroups.length > 0 &&
+    tabletGroups.every((g) => g.schedule.length > 0);
+
+  // Submit visit handler
+  const handleSubmitConsultation = async () => {
+    if (!activeStudent || !isReadyToReview) return;
     setIsSubmitting(true);
+    setSubmissionError(null);
+
     try {
-      const result = await DoctorService.submitVisit({
+      let finalFollowUpDate: string | undefined = undefined;
+      const now = new Date();
+      if (followUp === "tomorrow") {
+        const d = new Date(now);
+        d.setDate(d.getDate() + 1);
+        finalFollowUpDate = d.toISOString();
+      } else if (followUp === "day_after") {
+        const d = new Date(now);
+        d.setDate(d.getDate() + 2);
+        finalFollowUpDate = d.toISOString();
+      } else if (followUp === "custom" && customFollowUpDate) {
+        finalFollowUpDate = new Date(customFollowUpDate).toISOString();
+      }
+
+      const payload = {
         student_id: activeStudent.id,
         roll_number: activeStudent.roll_number,
-        problem_category: problemCategory,
-        clinical_notes: clinicalNotes,
-        medicines: medicineRows,
-        follow_up_date: followUpDate || undefined,
+        problems: selectedProblems,
+        problem_category: selectedProblems[0] || "General Health",
+        other_problem: otherProblemText || undefined,
+        consultation_seconds: consultationSeconds,
+        follow_up_date: finalFollowUpDate,
+        tablet_groups: tabletGroups.map((g) => ({
+          label: g.label,
+          tablets_per_dose: g.tabletsPerDose,
+          total_doses: g.totalDoses,
+          schedule: g.schedule.map((slot, idx) => ({
+            slot: slot.slot,
+            scheduled_at: `${slot.dateStr}T${slot.timeStr}:00.000+05:30`,
+            meal_relation: slot.mealRelation,
+            tablets: g.tabletsPerDose,
+            dose_number: idx + 1,
+          })),
+        })),
+      };
+
+      const res = await fetch("/api/doctor/consultation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      if (result.success) {
-        setIsReviewOpen(false);
-        setSuccessMessage(result.message);
-
-        // Refresh today patients list
-        const updatedToday = await DoctorService.getTodayPatients();
-        setTodayPatients(updatedToday);
-
-        // Reset consultation desk for the next student
-        setActiveStudent(null);
-        setStudentHistory([]);
-        setProblemCategory("");
-        setClinicalNotes("");
-        setMedicineRows([]);
-        setFollowUpDate("");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to submit consultation");
       }
+
+      // Close review modal & show 2s confirmation
+      setIsReviewOpen(false);
+      setConfirmationBanner(`Sent to ${activeStudent.name}`);
+
+      setTimeout(() => {
+        // Return to idle screen & reset all state
+        setActiveStudent(null);
+        setConfirmationBanner(null);
+        setSelectedProblems([]);
+        setOtherProblemText("");
+        setFollowUp("none");
+      }, 2000);
+    } catch (err: any) {
+      setSubmissionError(err?.message || "Failed to save consultation. Please retry.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handler: Acknowledge Alert
-  const handleMarkReviewed = async (alertId: string) => {
-    await DoctorService.markAlertReviewed(alertId);
-    const updatedAlerts = await DoctorService.getAlerts();
-    setDoctorAlerts(updatedAlerts);
-  };
+  // Load initial roll from URL if provided
+  useEffect(() => {
+    if (initialRoll) {
+      handleOpenStudent(initialRoll);
+    }
+  }, [initialRoll, handleOpenStudent]);
 
-  // Handler: Open Case from Today or Alerts View (loads into desk without URL exposure)
-  const handleOpenCase = (rollNumber: string) => {
-    setActiveTab("desk");
-    handleSelectStudent(rollNumber);
-  };
+  // If no student is open, render Idle Home Screen matching Image 2
+  if (!activeStudent) {
+    return (
+      <div className="w-full flex-1 flex flex-col">
+        {confirmationBanner && (
+          <div className="w-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] px-4 py-2.5 rounded-[8px] text-[13px] font-medium text-center mb-4">
+            {confirmationBanner}
+          </div>
+        )}
+        <IdleHomeScreen
+          onSelectStudent={handleOpenStudent}
+          isLoadingStudent={isLoadingStudent}
+          errorMessage={submissionError}
+          onClearError={() => setSubmissionError(null)}
+        />
+      </div>
+    );
+  }
 
-  const activeAlertCount = doctorAlerts.filter((a) => !a.acknowledged).length;
-
+  // Active Consultation Screen matching Image 1
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
-      {/* 1. Header with Doctor credentials & navigation */}
-      <DoctorHeader
-        doctorName="Dr. Alok Verma, MBBS, MD"
-        doctorRole="Campus Clinic OPD Doctor"
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        todayCount={todayPatients.length}
-        alertCount={activeAlertCount}
+    <div className="w-full flex-1 flex flex-col md:h-[calc(100dvh-64px)] md:overflow-hidden select-none pb-24 md:pb-6">
+      {/* Confirmation & Error Banners */}
+      {confirmationBanner && (
+        <div className="w-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#065F46] px-4 py-2 rounded-[8px] text-[13px] font-medium text-center my-2 shrink-0">
+          {confirmationBanner}
+        </div>
+      )}
+      {submissionError && (
+        <div className="w-full bg-[#FFF5F5] border border-[#FEE2E2] text-[#B91C1C] px-4 py-2 rounded-[8px] text-[13px] font-medium text-center my-2 shrink-0">
+          {submissionError}
+        </div>
+      )}
+      {isLoadingStudent && (
+        <div className="w-full bg-[#EFF6FF] border border-[#BFDBFE] text-[#1D4ED8] px-4 py-2 rounded-[8px] text-[13px] font-medium flex items-center justify-center gap-2 my-2 shrink-0 animate-pulse">
+          <svg className="animate-spin h-3.5 w-3.5 text-[#1D4ED8]" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <span>Loading student medical chart &amp; visit history...</span>
+        </div>
+      )}
+
+      {/* 1. TOP BAR: Compact Search Bar + Consultation Timer */}
+      <div className="pt-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 border-b border-[#E5E7EB]">
+        {/* Compact Search Field (560px wide, 48px tall) */}
+        <div className="relative w-full max-w-[560px]">
+          <div className="w-full h-12 bg-white rounded-[12px] border border-[#E5E7EB] shadow-[0_2px_8px_rgba(15,27,51,0.04)] flex items-center px-4 gap-2.5 focus-within:border-[#1D4ED8]/40 transition-colors">
+            <svg className="w-4 h-4 text-[#9CA3AF] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search another student by roll number or name..."
+              value={compactSearchVal}
+              onChange={(e) => setCompactSearchVal(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && compactSearchVal.trim()) {
+                  e.preventDefault();
+                  if (compactSearchResults.length > 0) {
+                    handleOpenStudent(compactSearchResults[0].roll_number);
+                  } else {
+                    handleOpenStudent(compactSearchVal.trim());
+                  }
+                  setCompactSearchVal("");
+                  setCompactSearchResults([]);
+                }
+              }}
+              className="w-full h-full text-[13px] text-[#0F1B33] placeholder-[#9CA3AF] bg-transparent focus:outline-none"
+            />
+            {compactSearchVal.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCompactSearchVal("");
+                  setCompactSearchResults([]);
+                }}
+                className="text-[#9CA3AF] hover:text-[#0F1B33] text-[14px] px-1 font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Autocomplete Dropdown */}
+          {compactSearchResults.length > 0 && (
+            <div className="absolute top-14 left-0 right-0 bg-white border border-[#E5E7EB] rounded-[10px] shadow-2xl z-40 divide-y divide-[#E5E7EB] overflow-hidden">
+              {compactSearchResults.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    handleOpenStudent(item.roll_number);
+                    setCompactSearchVal("");
+                    setCompactSearchResults([]);
+                  }}
+                  className="p-3 flex items-center justify-between hover:bg-slate-50 cursor-pointer text-[13px]"
+                >
+                  <div>
+                    <span className="font-serif font-bold text-[#0F1B33]">
+                      {item.name}
+                    </span>
+                    <span className="text-[#6B7280] text-[12px] ml-2">
+                      {item.roll_number} • {item.branch}
+                    </span>
+                  </div>
+                  <span className="text-[#1D4ED8] text-[12px] font-medium">Switch →</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quiet Timer: "In consultation 02:14" */}
+        <div className="font-serif text-[18px] text-[#0F1B33] tabular-nums whitespace-nowrap self-end sm:self-auto">
+          In consultation{" "}
+          <span className="font-medium text-[#0F1B33] ml-1">
+            {formatTimer(consultationSeconds)}
+          </span>
+        </div>
+      </div>
+
+      {/* 2. TWO-COLUMN LAYOUT (Desktop 100dvh, left ~32%, right ~68%) */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4 md:overflow-hidden">
+        {/* LEFT COLUMN: Student Profile Card + Recent Visits */}
+        <div className="lg:col-span-4 md:overflow-y-auto pr-1">
+          <StudentCard student={activeStudent} recentVisits={recentVisits} />
+        </div>
+
+        {/* RIGHT COLUMN: Problem + Tablets Groups + Follow-up */}
+        <div className="lg:col-span-8 md:overflow-y-auto pl-2 pr-1 pb-16">
+          <TabletPrescriptionForm
+            selectedProblems={selectedProblems}
+            onToggleProblem={handleToggleProblem}
+            otherProblemText={otherProblemText}
+            onChangeOtherText={setOtherProblemText}
+            tabletGroups={tabletGroups}
+            onUpdateTabletGroup={handleUpdateTabletGroup}
+            onAddTabletGroup={handleAddTabletGroup}
+            onRemoveTabletGroup={handleRemoveTabletGroup}
+            followUp={followUp}
+            customFollowUpDate={customFollowUpDate}
+            onChangeFollowUp={handleChangeFollowUp}
+            studentMealTimes={activeStudent.meal_times}
+          />
+        </div>
+      </div>
+
+      {/* 3. FLOATING BOTTOM BAR (720px wide, centered) */}
+      <FloatingBottomBar
+        summaryText={generateSummaryText()}
+        isReady={isReadyToReview}
+        onReview={() => setIsReviewOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        {/* Success Banner if visit was just submitted */}
-        {successMessage && (
-          <div className="flex items-center justify-between rounded-12 border border-emerald-200 bg-emerald-50 p-4 shadow-sm text-emerald-950 animate-in fade-in duration-300">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white shrink-0">
-                <CheckCircle2 className="h-5 w-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-emerald-900">
-                  Prescription Successfully Recorded & Pushed
-                </h4>
-                <p className="text-xs text-emerald-800">{successMessage}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSuccessMessage(null)}
-              className="text-emerald-700 hover:text-emerald-900 p-1"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        {/* View 1: Consultation Desk (The Working Screen) */}
-        {activeTab === "desk" && (
-          <div className="space-y-6">
-            {/* Top Search Bar */}
-            <div className="rounded-12 bg-white p-3 shadow-xs border border-doctor-border">
-              <StudentSearchBox
-                onSelectStudent={handleSelectStudent}
-                isLoading={isSearchingStudent}
-              />
-            </div>
-
-            {/* Split Screen Layout: Left Panel (Student Info) & Right Panel (New Visit) */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-              {/* Left Panel: Student Information & History */}
-              <div className="lg:col-span-5">
-                <StudentInfoPanel
-                  student={activeStudent}
-                  history={studentHistory}
-                  isLoading={isSearchingStudent}
-                />
-              </div>
-
-              {/* Right Panel: New Visit & Structured Prescription */}
-              <div className="lg:col-span-7">
-                <NewVisitPanel
-                  student={activeStudent}
-                  medicinesCatalog={medicinesCatalog}
-                  presets={presets}
-                  problemCategory={problemCategory}
-                  setProblemCategory={setProblemCategory}
-                  clinicalNotes={clinicalNotes}
-                  setClinicalNotes={setClinicalNotes}
-                  medicineRows={medicineRows}
-                  setMedicineRows={setMedicineRows}
-                  followUpDate={followUpDate}
-                  setFollowUpDate={setFollowUpDate}
-                  onOpenReview={handleOpenReview}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* View 2: Today's Patients */}
-        {activeTab === "today" && (
-          <TodayPatientsView
-            patients={todayPatients}
-            onSelectRoll={handleOpenCase}
-          />
-        )}
-
-        {/* View 3: My Red Alerts */}
-        {activeTab === "alerts" && (
-          <DoctorAlertsView
-            alerts={doctorAlerts}
-            onSelectRoll={handleOpenCase}
-            onMarkReviewed={handleMarkReviewed}
-          />
-        )}
-      </main>
-
-      {/* Review Modal: Day-by-Day Meal Anchored Preview */}
-      <ScheduleReviewModal
+      {/* 4. REVIEW MODAL */}
+      <ReviewModal
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}
-        onSubmit={handleSubmitVisit}
+        onSubmit={handleSubmitConsultation}
         isSubmitting={isSubmitting}
-        student={activeStudent}
-        problemCategory={problemCategory}
-        clinicalNotes={clinicalNotes}
-        medicines={medicineRows}
-        schedulePreview={schedulePreview}
-        followUpDate={followUpDate}
+        studentName={activeStudent.name}
+        allergies={activeStudent.allergies}
+        selectedProblems={selectedProblems}
+        otherProblemText={otherProblemText}
+        tabletGroups={tabletGroups}
+        followUp={followUp}
+        customFollowUpDate={customFollowUpDate}
       />
+
+      {/* 5. UNSAVED CHANGES DISCARD DIALOG */}
+      {isDiscardDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-[1px]">
+          <div className="bg-white rounded-[14px] shadow-2xl border border-[#E5E7EB] p-6 max-w-[420px] w-full space-y-4">
+            <h4 className="font-serif text-[18px] font-bold text-[#0F1B33]">
+              Discard this consultation?
+            </h4>
+            <p className="text-[13px] font-sans text-[#6B7280]">
+              You have unsaved prescription selections. Switching students now will discard them.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={cancelDiscard}
+                className="h-9 px-4 text-[13px] font-medium text-[#6B7280] hover:text-[#0F1B33]"
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                onClick={confirmDiscardAndOpen}
+                className="h-9 px-5 rounded-[8px] bg-[#B91C1C] text-white text-[13px] font-medium hover:bg-[#991B1B]"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default function DoctorPortalPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#6B7280]">Loading doctor desk...</div>}>
+      <DoctorPortalContent />
+    </Suspense>
+  );
+}
+

@@ -87,6 +87,14 @@ export interface ReportSummaryItem {
   escalation_calls: number;
 }
 
+export interface ReportDailyRow {
+  date: string;
+  total_consultations: number;
+  resolved_cases: number;
+  escalated_alerts: number;
+  adherence_rate: string;
+}
+
 export interface FilterParams {
   dateRange: 'today' | '7days' | '30days' | 'custom';
   branch: string;

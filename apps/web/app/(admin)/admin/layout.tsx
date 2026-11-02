@@ -1,17 +1,32 @@
+"use client";
+
 import React from "react";
-import { AdminHeader } from "./components/AdminHeader";
+import { usePathname } from "next/navigation";
+import { AdminSidebar } from "./components/AdminSidebar";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isLoginPage = pathname === "/admin/login";
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   return (
-    <div className="min-h-screen bg-white text-black font-sans antialiased">
-      <AdminHeader />
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {children}
-      </main>
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] antialiased flex">
+      {/* 240px Fixed Left Sidebar */}
+      <AdminSidebar />
+
+      {/* Main Content Area */}
+      <div className="pl-[240px] flex-1 flex flex-col min-h-screen">
+        <main className="flex-1 w-full max-w-[1200px] mx-auto p-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

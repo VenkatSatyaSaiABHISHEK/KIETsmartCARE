@@ -72,8 +72,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "logout") {
-      const response = NextResponse.json({ success: true, redirect_url: "/admin/login" });
+      const response = NextResponse.json({ success: true, redirect_url: "/" });
       response.cookies.delete("kiet_user_role");
+      response.cookies.delete("kiet_session");
       return response;
     }
 

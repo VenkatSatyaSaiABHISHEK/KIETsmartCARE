@@ -1,5 +1,5 @@
 import React from "react";
-import { OfficerSidebar } from "./components/OfficerSidebar";
+import { OfficerMasthead } from "./components/OfficerMasthead";
 import { RealtimeToast } from "./components/RealtimeToast";
 
 export default function OfficerLayout({
@@ -8,18 +8,16 @@ export default function OfficerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#F7F9FD] text-[#0F1B3D] antialiased">
-      {/* Sidebar navigation */}
-      <OfficerSidebar redAlertCount={3} />
+    <div className="min-h-screen bg-white text-[#0F1B33] antialiased flex flex-col font-sans">
+      {/* 1. Shared Masthead rendered ONCE for all officer routes */}
+      <OfficerMasthead />
 
-      {/* Main Content Area */}
-      <div className="md:pl-64 flex flex-col flex-1 min-h-screen">
-        <main className="flex-1 pb-16">
-          {children}
-        </main>
-      </div>
+      {/* 2. Page container: max-width 1600px, centered, side padding 72px desktop, 40px tablet, 20px phone */}
+      <main className="w-full flex-1 max-w-[1600px] mx-auto px-5 sm:px-10 lg:px-[72px] pb-16 sm:pb-8 flex flex-col">
+        {children}
+      </main>
 
-      {/* Unobtrusive Supabase Realtime notification toast */}
+      {/* Realtime Toast notification listener */}
       <RealtimeToast />
     </div>
   );

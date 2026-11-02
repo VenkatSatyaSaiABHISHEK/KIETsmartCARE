@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs } from 'expo-router';
 import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
-import { Home, Pill, History, User, PhoneCall } from 'lucide-react-native';
+import { Home, Pill, Clock, User } from 'lucide-react-native';
 import { EmergencyModal } from '../../src/components/EmergencyModal';
 
 export default function TabsLayout() {
@@ -15,80 +15,78 @@ export default function TabsLayout() {
           headerStyle: {
             backgroundColor: '#ffffff',
             borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: '#e4e4e7',
+            borderBottomColor: '#EBEBEB',
             elevation: 0,
             shadowOpacity: 0,
           },
           headerTitleStyle: {
-            fontSize: 18,
-            fontWeight: '800',
-            color: '#0a0a0a',
-            letterSpacing: -0.4,
+            fontSize: 16,
+            fontWeight: '600',
+            color: '#121212',
           },
           headerRight: () => (
             <TouchableOpacity
-              style={styles.emergencyHeaderBtn}
+              style={styles.emergencyBtn}
               onPress={() => setEmergencyModalOpen(true)}
               activeOpacity={0.8}
             >
-              <PhoneCall color="#ffffff" size={14} />
-              <Text style={styles.emergencyHeaderBtnText}>SOS Emergency</Text>
+              <Text style={styles.emergencyBtnText}>Emergency</Text>
             </TouchableOpacity>
           ),
           tabBarStyle: {
             backgroundColor: '#ffffff',
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: '#e4e4e7',
+            borderTopWidth: 1,
+            borderTopColor: '#E5E7EB',
             height: Platform.OS === 'ios' ? 84 : 64,
             paddingBottom: Platform.OS === 'ios' ? 24 : 10,
             paddingTop: 8,
           },
-          tabBarActiveTintColor: '#0a0a0a',
-          tabBarInactiveTintColor: '#a1a1aa',
+          tabBarActiveTintColor: '#0F1B33',
+          tabBarInactiveTintColor: '#64748B',
           tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '700',
+            fontSize: 12,
+            fontWeight: '600',
+            marginTop: 2,
           },
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Smart Care',
+            title: 'KIET Smart Care',
             tabBarLabel: 'Home',
-            tabBarIcon: ({ color, size }) => <Home color={color} size={size - 2} />,
+            tabBarIcon: ({ color }) => <Home size={22} color={color} strokeWidth={2} />,
           }}
         />
 
         <Tabs.Screen
           name="medicines"
           options={{
-            title: 'My Prescriptions',
+            title: 'Prescriptions',
             tabBarLabel: 'Medicines',
-            tabBarIcon: ({ color, size }) => <Pill color={color} size={size - 2} />,
+            tabBarIcon: ({ color }) => <Pill size={22} color={color} strokeWidth={2} />,
           }}
         />
 
         <Tabs.Screen
           name="history"
           options={{
-            title: 'Clinical History',
+            title: 'Visit History',
             tabBarLabel: 'History',
-            tabBarIcon: ({ color, size }) => <History color={color} size={size - 2} />,
+            tabBarIcon: ({ color }) => <Clock size={22} color={color} strokeWidth={2} />,
           }}
         />
 
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'My Health Profile',
+            title: 'Student Profile',
             tabBarLabel: 'Profile',
-            tabBarIcon: ({ color, size }) => <User color={color} size={size - 2} />,
+            tabBarIcon: ({ color }) => <User size={22} color={color} strokeWidth={2} />,
           }}
         />
       </Tabs>
 
-      {/* Emergency Contact Modal Triggered from Header */}
       <EmergencyModal
         visible={emergencyModalOpen}
         onClose={() => setEmergencyModalOpen(false)}
@@ -98,25 +96,16 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  emergencyHeaderBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#dc2626',
+  emergencyBtn: {
+    marginRight: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 16,
-    gap: 6,
-    shadowColor: '#dc2626',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 6,
+    backgroundColor: '#991B1B',
   },
-  emergencyHeaderBtnText: {
+  emergencyBtnText: {
     color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

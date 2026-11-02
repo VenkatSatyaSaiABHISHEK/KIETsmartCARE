@@ -21,8 +21,14 @@ web-build/
 dist/
 *.tsbuildinfo
 
-# Environment variables
+# Environment variables (Strictly ignored)
 .env
+.env*
+*.env
+*.env.*
+**/.env
+**/.env*
+**/*.env
 .env.local
 .env.development.local
 .env.test.local
@@ -38,3 +44,7 @@ yarn-error.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Local Scratch & Maintenance Scripts
+apps/web/scripts/
+scripts/

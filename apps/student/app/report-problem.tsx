@@ -10,9 +10,8 @@ import {
   Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { AlertOctagon, PhoneCall, Send, ArrowLeft, ShieldAlert, Check } from 'lucide-react-native';
 import { StudentApi } from '../src/services/student-api';
-import { EMERGENCY_CONTACTS } from '@kiet-smart-care/shared';
+import { EMERGENCY_CONTACTS } from '../src/constants/shared';
 
 export default function ReportProblemScreen() {
   const router = useRouter();
@@ -40,80 +39,77 @@ export default function ReportProblemScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <View style={styles.header}>
+    <SafeAreaView style={styles.container}>
+      {/* Top Header */}
+      <View style={styles.topNav}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft color="#0a0a0a" size={20} />
+          <Text style={styles.backText}>&larr; Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Report a Concern / Side Effect</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Prominent Emergency/Doctor Call Banner Always Available */}
-        <View style={styles.doctorBanner}>
-          <View style={styles.doctorBannerHeader}>
-            <ShieldAlert color="#991b1b" size={20} />
-            <Text style={styles.doctorBannerTitle}>Immediate Doctor Contact</Text>
-          </View>
-          <Text style={styles.doctorBannerSub}>
-            If you have sudden severe allergic symptoms, chest tightness, or dizziness, call campus health staff right away.
+        <View style={styles.header}>
+          <Text style={styles.brandTitle}>CLINICAL FEEDBACK</Text>
+          <Text style={styles.title}>Report a problem</Text>
+          <Text style={styles.subtext}>
+            Report an unexpected side effect, missed dosage question, or worsening symptoms.
           </Text>
-          <TouchableOpacity
-            style={styles.callDoctorBtn}
-            onPress={handleCallDoctor}
-            activeOpacity={0.85}
-          >
-            <PhoneCall color="#ffffff" size={16} />
-            <Text style={styles.callDoctorBtnText}>Call Campus Clinic Doctor</Text>
-          </TouchableOpacity>
         </View>
 
-        {!isSubmitted ? (
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Describe Your Symptom or Side Effect</Text>
-            <Text style={styles.formSub}>
-              Submitting this form immediately flags a RED PRIORITY ALERT to Dr. Verma and the Campus Health Officer.
+        {isSubmitted ? (
+          <View style={styles.submittedBox}>
+            <Text style={styles.submittedTitle}>Report Transmitted</Text>
+            <Text style={styles.submittedSub}>
+              Your report has been logged and sent to the campus health team. If you require urgent assistance, please call the clinic directly.
             </Text>
-
-            <TextInput
-              style={styles.textArea}
-              placeholder="e.g. Started experiencing nausea and a red skin rash 1 hour after taking the afternoon dose..."
-              placeholderTextColor="#a1a1aa"
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-            />
-
-            <TouchableOpacity
-              style={styles.sendBtn}
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              activeOpacity={0.85}
-            >
-              <Send color="#ffffff" size={16} />
-              <Text style={styles.sendBtnText}>
-                {isSubmitting ? 'Sending Alert...' : 'Send Urgent Alert to Doctor'}
-              </Text>
+            <TouchableOpacity style={styles.callBtn} onPress={handleCallDoctor}>
+              <Text style={styles.callBtnText}>Call Clinic: +91-120-2983555</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.successCard}>
-            <View style={styles.successIconCircle}>
-              <Check color="#ffffff" size={24} />
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Describe the issue</Text>
+              <TextInput
+                style={styles.textArea}
+                multiline
+                numberOfLines={5}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Describe what you are experiencing (e.g. rash, dizziness, nausea)..."
+                textAlignVertical="top"
+              />
             </View>
-            <Text style={styles.successTitle}>Red Alert Broadcasted</Text>
-            <Text style={styles.successBody}>
-              Your report has been dispatched to your prescribing doctor and all Campus Health Officers. Someone from the clinic will contact you shortly.
-            </Text>
+
             <TouchableOpacity
-              style={styles.doneBtn}
-              onPress={() => router.back()}
-              activeOpacity={0.85}
+              style={styles.submitBtn}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              activeOpacity={0.8}
             >
-              <Text style={styles.doneBtnText}>Back to Home</Text>
+              <Text style={styles.submitBtnText}>
+                {isSubmitting ? 'Sending report...' : 'Submit Report'}
+              </Text>
             </TouchableOpacity>
+
+            <Text style={styles.noteText}>
+              Your report is sent directly to the campus health team.
+            </Text>
+
+            {/* Emergency Hotline Action */}
+            <View style={styles.emergencyBox}>
+              <Text style={styles.emergencyHeading}>Immediate Medical Urgency</Text>
+              <Text style={styles.emergencySub}>
+                If you have chest pain, breathlessness, or severe allergic reaction, do not wait for a text response.
+              </Text>
+              <TouchableOpacity
+                style={styles.emergencyBtn}
+                onPress={handleCallDoctor}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.emergencyBtnText}>Call Campus Health Center &rarr;</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -122,153 +118,145 @@ export default function ReportProblemScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  topNav: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f4f4f5',
-    gap: 12,
+    paddingTop: 12,
   },
   backBtn: {
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: '#f4f4f5',
+    paddingVertical: 6,
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0a0a0a',
+  backText: {
+    fontSize: 14,
+    color: '#121212',
+    fontWeight: '600',
   },
   scrollContent: {
-    padding: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  brandTitle: {
+    fontSize: 11,
+    letterSpacing: 1,
+    fontWeight: '700',
+    color: '#555555',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#121212',
+  },
+  subtext: {
+    fontSize: 14,
+    color: '#555555',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  form: {
     gap: 16,
   },
-  doctorBanner: {
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    borderRadius: 20,
-    padding: 18,
+  inputGroup: {
+    gap: 6,
   },
-  doctorBannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  doctorBannerTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#991b1b',
-  },
-  doctorBannerSub: {
-    fontSize: 12,
-    color: '#7f1d1d',
-    lineHeight: 17,
-    marginBottom: 14,
-  },
-  callDoctorBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#dc2626',
-    height: 46,
-    borderRadius: 12,
-    gap: 8,
-  },
-  callDoctorBtnText: {
-    color: '#ffffff',
+  inputLabel: {
     fontSize: 13,
-    fontWeight: '700',
-  },
-  formCard: {
-    backgroundColor: '#f4f4f5',
-    borderRadius: 20,
-    padding: 20,
-  },
-  formTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  formSub: {
-    fontSize: 12,
-    color: '#71717a',
-    marginTop: 4,
-    lineHeight: 16,
-    marginBottom: 16,
+    fontWeight: '600',
+    color: '#121212',
   },
   textArea: {
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
+    minHeight: 120,
     borderWidth: 1,
-    borderColor: '#e4e4e7',
+    borderColor: '#EBEBEB',
+    borderRadius: 8,
     padding: 14,
     fontSize: 14,
-    color: '#0a0a0a',
-    minHeight: 120,
-    marginBottom: 16,
+    color: '#121212',
+    backgroundColor: '#FAFAFA',
   },
-  sendBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  submitBtn: {
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#0A0A0A',
     justifyContent: 'center',
-    backgroundColor: '#0a0a0a',
-    height: 50,
-    borderRadius: 14,
-    gap: 8,
+    alignItems: 'center',
+    marginTop: 8,
   },
-  sendBtnText: {
-    color: '#ffffff',
+  submitBtnText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
-  successCard: {
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
+  noteText: {
+    fontSize: 12,
+    color: '#555555',
     textAlign: 'center',
   },
-  successIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#16a34a',
-    alignItems: 'center',
-    justifyContent: 'center',
+  emergencyBox: {
+    marginTop: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 8,
+    backgroundColor: '#FAFAFA',
+  },
+  emergencyHeading: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 4,
+  },
+  emergencySub: {
+    fontSize: 12,
+    color: '#555555',
+    lineHeight: 16,
     marginBottom: 12,
   },
-  successTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#166534',
-    marginBottom: 6,
+  emergencyBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#991B1B',
+    borderRadius: 6,
   },
-  successBody: {
+  emergencyBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
-    color: '#15803d',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
-  },
-  doneBtn: {
-    backgroundColor: '#166534',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  doneBtnText: {
-    color: '#ffffff',
     fontWeight: '700',
+  },
+  submittedBox: {
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 8,
+    gap: 12,
+  },
+  submittedTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#121212',
+  },
+  submittedSub: {
     fontSize: 13,
+    color: '#555555',
+    lineHeight: 18,
+  },
+  callBtn: {
+    marginTop: 8,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#0A0A0A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  callBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

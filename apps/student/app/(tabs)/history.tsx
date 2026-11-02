@@ -1,6 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView } from 'react-native';
-import { Calendar, Stethoscope, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Text, View, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { StudentApi } from '../../src/services/student-api';
 
 interface VisitTimelineItem {
   id: string;
@@ -11,243 +12,275 @@ interface VisitTimelineItem {
   outcome: 'Recovered' | 'Active Course' | 'Under Review';
 }
 
-const HISTORY_TIMELINE: VisitTimelineItem[] = [
-  {
-    id: 'vh-1',
-    date: '29 Oct 2026',
-    doctor: 'Dr. Alok Verma, MBBS, MD',
-    problem: 'Fever & Head Cold',
-    medicines: 'Paracetamol 650mg, Pantoprazole 40mg, Cetirizine 10mg',
-    outcome: 'Active Course',
-  },
-  {
-    id: 'vh-2',
-    date: '14 Sep 2026',
-    doctor: 'Dr. R. K. Singhal',
-    problem: 'Tension Headache',
-    medicines: 'Paracetamol 500mg (2 days)',
-    outcome: 'Recovered',
-  },
-  {
-    id: 'vh-3',
-    date: '02 Aug 2026',
-    doctor: 'Dr. Alok Verma',
-    problem: 'Acute Acidity',
-    medicines: 'Pantoprazole 40mg, Domperidone 10mg (3 days)',
-    outcome: 'Recovered',
-  },
-];
-
 export default function HistoryScreen() {
+  const [history, setHistory] = useState<VisitTimelineItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchVisits = async () => {
+    try {
+      const items = await StudentApi.getHistory();
+      setHistory(items);
+    } catch (e) {
+      console.warn('Error fetching history:', e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchVisits();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchVisits();
+  };
+
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.header}>
-          <Text style={styles.title}>OPD Visit Timeline</Text>
-          <Text style={styles.subtitle}>
-            Immutable historical record of campus consultations and clinical outcomes.
-          </Text>
+          <Text style={styles.title}>Medical History</Text>
+          <Text style={styles.subtext}>Your complete campus clinic consultation timeline</Text>
         </View>
 
-        <View style={styles.timelineContainer}>
-          {HISTORY_TIMELINE.map((item, index) => {
-            const isLast = index === HISTORY_TIMELINE.length - 1;
-            return (
-              <View key={item.id} style={styles.timelineRow}>
-                <View style={styles.lineCol}>
-                  <View style={[styles.dot, item.outcome === 'Active Course' && styles.dotActive]} />
-                  {!isLast && <View style={styles.verticalLine} />}
-                </View>
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color="#0284C7" />
+            <Text style={styles.loadingText}>Loading clinical records...</Text>
+          </View>
+        ) : history.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No medical consultation history on record.</Text>
+          </View>
+        ) : (
+          <View style={styles.timeline}>
+            {history.map((item, index) => {
+              const isLast = index === history.length - 1;
+              const isCurrent = item.outcome === 'Active Course';
 
-                <View style={styles.eventCard}>
-                  <View style={styles.eventCardHeader}>
-                    <View style={styles.dateBadge}>
-                      <Calendar color="#2563eb" size={12} />
-                      <Text style={styles.dateText}>{item.date}</Text>
-                    </View>
+              return (
+                <View key={item.id} style={styles.timelineRow}>
+                  {/* Left Column: Spine & Bullet */}
+                  <View style={styles.spineCol}>
                     <View
                       style={[
-                        styles.outcomeBadge,
-                        item.outcome === 'Recovered'
-                          ? styles.outcomeRecovered
-                          : styles.outcomeActive,
+                        styles.bullet,
+                        isCurrent ? styles.bulletActive : styles.bulletPast,
                       ]}
-                    >
-                      <Text
-                        style={[
-                          styles.outcomeText,
-                          item.outcome === 'Recovered'
-                            ? styles.outcomeTextRecovered
-                            : styles.outcomeTextActive,
-                        ]}
-                      >
-                        {item.outcome}
-                      </Text>
+                    />
+                    {!isLast && <View style={styles.spineLine} />}
+                  </View>
+
+                  {/* Right Column: Content Card */}
+                  <View style={styles.cardCol}>
+                    <View style={styles.visitCard}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.date}>{item.date}</Text>
+                        <View
+                          style={[
+                            styles.badge,
+                            item.outcome === 'Recovered'
+                              ? styles.badgeRecovered
+                              : item.outcome === 'Active Course'
+                              ? styles.badgeActive
+                              : styles.badgeReview,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.badgeText,
+                              item.outcome === 'Recovered'
+                                ? styles.badgeTextRecovered
+                                : item.outcome === 'Active Course'
+                                ? styles.badgeTextActive
+                                : styles.badgeTextReview,
+                            ]}
+                          >
+                            {item.outcome}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.problem}>{item.problem}</Text>
+                      <Text style={styles.doctor}>Attended by {item.doctor}</Text>
+
+                      <View style={styles.medicineBox}>
+                        <Text style={styles.medLabel}>PRESCRIBED REGIMEN</Text>
+                        <Text style={styles.medValue}>{item.medicines}</Text>
+                      </View>
                     </View>
                   </View>
-
-                  <Text style={styles.problemName}>{item.problem}</Text>
-                  <Text style={styles.doctorName}>Doctor: {item.doctor}</Text>
-
-                  <View style={styles.medsBox}>
-                    <Text style={styles.medsLabel}>Prescribed Meds:</Text>
-                    <Text style={styles.medsText}>{item.medicines}</Text>
-                  </View>
                 </View>
-              </View>
-            );
-          })}
-        </View>
-
-        <View style={styles.auditNotice}>
-          <ShieldCheck color="#71717a" size={16} />
-          <Text style={styles.auditNoticeText}>
-            Medical records cannot be modified or deleted. Past visit data is preserved as permanent medical history.
-          </Text>
-        </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 90,
   },
   header: {
     marginBottom: 20,
   },
   title: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    letterSpacing: -0.4,
+    fontWeight: '700',
+    color: '#121212',
+    letterSpacing: -0.3,
   },
-  subtitle: {
+  subtext: {
     fontSize: 12,
-    color: '#71717a',
-    marginTop: 4,
-    lineHeight: 16,
+    color: '#555555',
+    marginTop: 2,
   },
-  timelineContainer: {
-    marginTop: 8,
+  loadingBox: {
+    padding: 30,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: '#555555',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#555555',
+  },
+  timeline: {
+    marginTop: 4,
   },
   timelineRow: {
     flexDirection: 'row',
   },
-  lineCol: {
+  spineCol: {
     width: 24,
     alignItems: 'center',
-    paddingTop: 12,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#a1a1aa',
-  },
-  dotActive: {
-    backgroundColor: '#2563eb',
-  },
-  verticalLine: {
-    width: 2,
-    flex: 1,
-    minHeight: 50,
-    backgroundColor: '#f4f4f5',
+  bullet: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     marginTop: 4,
   },
-  eventCard: {
-    flex: 1,
-    backgroundColor: '#f4f4f5',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
+  bulletActive: {
+    backgroundColor: '#0284C7',
+    borderWidth: 2,
+    borderColor: '#BAE6FD',
   },
-  eventCardHeader: {
+  bulletPast: {
+    backgroundColor: '#059669',
+  },
+  spineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 4,
+  },
+  cardCol: {
+    flex: 1,
+    paddingLeft: 12,
+    paddingBottom: 20,
+  },
+  visitCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 12,
+    padding: 16,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  dateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dateText: {
+  date: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#2563eb',
+    fontWeight: '600',
+    color: '#555555',
   },
-  outcomeBadge: {
+  badge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
   },
-  outcomeRecovered: {
-    backgroundColor: '#dcfce7',
+  badgeRecovered: {
+    backgroundColor: '#ECFDF5',
   },
-  outcomeActive: {
-    backgroundColor: '#dbeafe',
+  badgeActive: {
+    backgroundColor: '#EFF6FF',
   },
-  outcomeText: {
-    fontSize: 10,
-    fontWeight: '800',
+  badgeReview: {
+    backgroundColor: '#FFFBEB',
   },
-  outcomeTextRecovered: {
-    color: '#166534',
-  },
-  outcomeTextActive: {
-    color: '#1e40af',
-  },
-  problemName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  doctorName: {
-    fontSize: 12,
-    color: '#52525b',
-    marginTop: 2,
-  },
-  medsBox: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-  },
-  medsLabel: {
+  badgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#71717a',
-    textTransform: 'uppercase',
   },
-  medsText: {
+  badgeTextRecovered: {
+    color: '#059669',
+  },
+  badgeTextActive: {
+    color: '#0284C7',
+  },
+  badgeTextReview: {
+    color: '#B45309',
+  },
+  problem: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#121212',
+    marginBottom: 2,
+  },
+  doctor: {
     fontSize: 12,
-    color: '#0a0a0a',
-    marginTop: 2,
-    fontWeight: '500',
+    color: '#555555',
+    marginBottom: 10,
   },
-  auditNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fafafa',
+  medicineBox: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 10,
     borderWidth: 1,
-    borderColor: '#f4f4f5',
-    padding: 14,
-    borderRadius: 14,
-    marginTop: 12,
+    borderColor: '#F3F4F6',
   },
-  auditNoticeText: {
-    flex: 1,
-    fontSize: 11,
-    color: '#71717a',
-    lineHeight: 15,
+  medLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  medValue: {
+    fontSize: 12,
+    color: '#1F2937',
+    fontWeight: '500',
   },
 });

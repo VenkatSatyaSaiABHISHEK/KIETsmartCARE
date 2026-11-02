@@ -19,6 +19,7 @@ export interface StudentProfileData {
   roll_number: string;
   full_name: string;
   department: string;
+  branch?: string;
   year: number;
   hostel_status: 'Hosteler' | 'Day Scholar';
   hostel_name?: string;
@@ -35,7 +36,10 @@ export interface DoseScheduleRecord {
   medicine_name: string;
   dose: string;
   scheduled_time: string; // ISO string or "HH:mm"
-  meal_slot: 'breakfast' | 'lunch' | 'dinner';
+  time?: string;
+  slot?: string;
+  tablets?: number;
+  meal_slot: 'breakfast' | 'lunch' | 'dinner' | string;
   meal_relation: 'before' | 'after';
   status: 'scheduled' | 'taken' | 'taken_late' | 'not_taken' | 'unconfirmed';
   confirmed_at?: string;
@@ -70,7 +74,7 @@ export interface RecoveryInquiry {
 
 export interface OfflineActionItem {
   id: string;
-  type: 'DOSE_RESPONSE' | 'RECOVERY_RESPONSE' | 'SIDE_EFFECT_REPORT' | 'MEAL_TIMES_UPDATE';
+  type: 'DOSE_RESPONSE' | 'RECOVERY_RESPONSE' | 'SIDE_EFFECT_REPORT' | 'MEAL_TIMES_UPDATE' | 'LANGUAGE_UPDATE';
   payload: Record<string, unknown>;
   created_at: string;
 }

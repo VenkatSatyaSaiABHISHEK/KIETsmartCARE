@@ -1,36 +1,60 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
-import { Pill, UserCheck, Calendar, Clock, ShieldCheck } from 'lucide-react-native';
+import { useFocusEffect } from 'expo-router';
 import { StudentApi } from '../../src/services/student-api';
 import { PrescriptionRecord } from '../../src/types/student';
 
 export default function MedicinesScreen() {
   const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    async function load() {
+  const loadPrescriptions = async () => {
+    try {
       const data = await StudentApi.getPrescriptions();
       setPrescriptions(data);
+    } catch (e) {
+      console.warn('Failed loading prescriptions:', e);
     }
-    load();
-  }, []);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPrescriptions();
+    }, [])
+  );
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await loadPrescriptions();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const activePrescriptions = prescriptions.filter((p) => p.is_active);
   const pastPrescriptions = prescriptions.filter((p) => !p.is_active);
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Active Prescriptions */}
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
+        {/* Active Prescriptions Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Prescription Courses</Text>
-          <Text style={styles.sectionSub}>Currently synchronized with meal reminders</Text>
+          <Text style={styles.sectionTitle}>Active Prescriptions</Text>
+          <Text style={styles.sectionSub}>Synchronized with your meal reminder schedule.</Text>
         </View>
 
         {activePrescriptions.length === 0 ? (
@@ -38,237 +62,165 @@ export default function MedicinesScreen() {
             <Text style={styles.emptyText}>No active medication courses on file.</Text>
           </View>
         ) : (
-          activePrescriptions.map((rx) => (
-            <View key={rx.id} style={styles.rxCard}>
-              <View style={styles.rxCardTop}>
-                <div>
-                  <View style={styles.activePill}>
-                    <Text style={styles.activePillText}>ACTIVE COURSE</Text>
-                  </View>
-                  <Text style={styles.problemName}>{rx.problem_category}</Text>
-                </div>
-                <View style={styles.dateBadge}>
-                  <Calendar color="#666666" size={12} />
-                  <Text style={styles.dateBadgeText}>{rx.start_date} - {rx.end_date}</Text>
+          <View style={styles.listContainer}>
+            {activePrescriptions.map((rx) => (
+              <View key={rx.id} style={styles.rxBlock}>
+                <View style={styles.rxHeader}>
+                  <Text style={styles.problemTitle}>{rx.problem_category}</Text>
+                  <Text style={styles.dateText}>
+                    {rx.start_date} &mdash; {rx.end_date}
+                  </Text>
+                </View>
+
+                <Text style={styles.doctorText}>Prescribed by {rx.doctor_name}</Text>
+
+                <View style={styles.medicinesList}>
+                  {rx.medicines.map((med, idx) => (
+                    <View key={idx} style={styles.medicineRow}>
+                      <View style={styles.medMain}>
+                        <Text style={styles.medName}>{med.name}</Text>
+                        <Text style={styles.medDetail}>
+                          {med.dose} &bull; {med.meal_relation === 'after' ? 'After' : 'Before'}{' '}
+                          {med.meal_slot}
+                        </Text>
+                      </View>
+                      <View style={styles.durationPill}>
+                        <Text style={styles.durationText}>{med.duration_days} days</Text>
+                      </View>
+                    </View>
+                  ))}
                 </View>
               </View>
-
-              <View style={styles.doctorRow}>
-                <UserCheck color="#2563eb" size={14} />
-                <Text style={styles.doctorName}>Prescribed by {rx.doctor_name}</Text>
-              </View>
-
-              <View style={styles.medicinesList}>
-                {rx.medicines.map((med, idx) => (
-                  <View key={idx} style={styles.medicineItem}>
-                    <View style={styles.medIconBox}>
-                      <Pill color="#0a0a0a" size={16} />
-                    </View>
-                    <View style={styles.medInfo}>
-                      <Text style={styles.medName}>{med.name}</Text>
-                      <Text style={styles.medDetails}>
-                        {med.dose} &bull; {med.meal_relation === 'after' ? 'After' : 'Before'} {med.meal_slot}
-                      </Text>
-                    </View>
-                    <View style={styles.durationPill}>
-                      <Text style={styles.durationPillText}>{med.duration_days} Days</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))
+            ))}
+          </View>
         )}
 
-        {/* Past Prescriptions History */}
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-          <Text style={styles.sectionTitle}>Past Prescriptions History</Text>
-          <Text style={styles.sectionSub}>Prior courses completed at Campus Health OPD</Text>
-        </View>
-
-        {pastPrescriptions.map((rx) => (
-          <View key={rx.id} style={[styles.rxCard, styles.pastRxCard]}>
-            <View style={styles.rxCardTop}>
-              <Text style={[styles.problemName, styles.pastProblemName]}>
-                {rx.problem_category}
-              </Text>
-              <Text style={styles.dateBadgeText}>{rx.start_date} - {rx.end_date}</Text>
+        {/* Past Prescriptions */}
+        {pastPrescriptions.length > 0 && (
+          <>
+            <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+              <Text style={styles.sectionTitle}>Past Prescriptions</Text>
             </View>
-            <Text style={styles.doctorName}>Doctor: {rx.doctor_name}</Text>
-
-            <View style={styles.medicinesList}>
-              {rx.medicines.map((med, idx) => (
-                <View key={idx} style={[styles.medicineItem, styles.pastMedicineItem]}>
-                  <Text style={styles.pastMedName}>{med.name} ({med.dose})</Text>
-                  <Text style={styles.pastMedDetails}>Completed {med.duration_days} days course</Text>
+            <View style={styles.listContainer}>
+              {pastPrescriptions.map((rx) => (
+                <View key={rx.id} style={[styles.rxBlock, styles.pastRxBlock]}>
+                  <View style={styles.rxHeader}>
+                    <Text style={styles.problemTitle}>{rx.problem_category}</Text>
+                    <Text style={styles.dateText}>{rx.start_date}</Text>
+                  </View>
+                  <Text style={styles.doctorText}>Prescribed by {rx.doctor_name}</Text>
                 </View>
               ))}
             </View>
-          </View>
-        ))}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 90,
   },
   sectionHeader: {
     marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    letterSpacing: -0.3,
+    fontWeight: '700',
+    color: '#121212',
+    letterSpacing: -0.2,
   },
   sectionSub: {
     fontSize: 12,
-    color: '#71717a',
+    color: '#555555',
     marginTop: 2,
   },
   emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBEBEB',
+    borderRadius: 12,
     padding: 24,
-    borderRadius: 18,
-    backgroundColor: '#f4f4f5',
     alignItems: 'center',
   },
   emptyText: {
     fontSize: 13,
-    color: '#71717a',
+    color: '#555555',
   },
-  rxCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    padding: 20,
+  listContainer: {
+    gap: 12,
+  },
+  rxBlock: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#e4e4e7',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    borderColor: '#EBEBEB',
+    borderRadius: 12,
+    padding: 16,
   },
-  pastRxCard: {
-    backgroundColor: '#fafafa',
-    borderColor: '#f4f4f5',
+  pastRxBlock: {
+    opacity: 0.7,
   },
-  rxCardTop: {
+  rxHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  activePill: {
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
     marginBottom: 4,
   },
-  activePillText: {
-    color: '#1e40af',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  problemTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#121212',
+    flex: 1,
   },
-  problemName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0a0a0a',
-  },
-  pastProblemName: {
-    color: '#52525b',
-  },
-  dateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f4f4f5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  dateBadgeText: {
+  dateText: {
     fontSize: 11,
-    color: '#71717a',
-    fontWeight: '600',
+    color: '#555555',
   },
-  doctorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 16,
-  },
-  doctorName: {
+  doctorText: {
     fontSize: 12,
-    color: '#52525b',
-    fontWeight: '600',
+    color: '#555555',
+    marginBottom: 12,
   },
   medicinesList: {
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+    paddingTop: 10,
     gap: 8,
   },
-  medicineItem: {
+  medicineRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f4f4f5',
-    padding: 12,
-    borderRadius: 14,
-    gap: 10,
-  },
-  pastMedicineItem: {
-    backgroundColor: '#f4f4f5',
     justifyContent: 'space-between',
-  },
-  medIconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  medInfo: {
+  medMain: {
     flex: 1,
   },
   medName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0a0a0a',
-  },
-  medDetails: {
-    fontSize: 11,
-    color: '#71717a',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  pastMedName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#3f3f46',
+    color: '#121212',
   },
-  pastMedDetails: {
+  medDetail: {
     fontSize: 11,
-    color: '#71717a',
+    color: '#555555',
+    marginTop: 1,
   },
   durationPill: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F0F9FF',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
-  durationPillText: {
+  durationText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#0a0a0a',
+    fontWeight: '600',
+    color: '#0284C7',
   },
 });

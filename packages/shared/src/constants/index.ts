@@ -4,6 +4,16 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner'] as const;
 export type MealType = (typeof MEAL_TYPES)[number];
 
+export const CLINICAL_DOSE_SLOTS = ['morning', 'afternoon', 'evening', 'night'] as const;
+export type ClinicalDoseSlot = (typeof CLINICAL_DOSE_SLOTS)[number];
+
+export const DEFAULT_SLOT_TIMES: Record<ClinicalDoseSlot, string> = {
+  morning: '08:00',
+  afternoon: '13:30',
+  evening: '17:00',
+  night: '20:30',
+};
+
 export const MEAL_RELATIONS = ['before', 'after'] as const;
 export type MealRelation = (typeof MEAL_RELATIONS)[number];
 

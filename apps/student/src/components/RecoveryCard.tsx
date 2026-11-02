@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   Linking,
 } from 'react-native';
-import { HeartPulse, Check, PhoneCall, AlertOctagon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { HeartPulse, CheckCircle2, AlertTriangle, PhoneCall } from 'lucide-react-native';
 import { RecoveryInquiry } from '../types/student';
-import { EMERGENCY_CONTACTS } from '@kiet-smart-care/shared';
+import { EMERGENCY_CONTACTS } from '../constants/shared';
 
 interface RecoveryCardProps {
   inquiry: RecoveryInquiry;
@@ -40,14 +40,14 @@ export function RecoveryCard({ inquiry, onAnswer }: RecoveryCardProps) {
 
   if (answeredState === 'better') {
     return (
-      <View style={[styles.card, styles.resolvedCard]}>
-        <Check color="#166534" size={24} />
-        <View style={styles.resolvedTextContainer}>
-          <Text style={styles.resolvedTitle}>Glad you feel better!</Text>
-          <Text style={styles.resolvedSub}>
-            Your recovery report for &ldquo;{inquiry.problem_name}&rdquo; has been logged.
-          </Text>
+      <View style={[styles.card, styles.cardSuccess]}>
+        <View style={styles.headerRow}>
+          <CheckCircle2 size={20} color="#059669" />
+          <Text style={styles.successTitle}>Glad you are feeling better!</Text>
         </View>
+        <Text style={styles.subtext}>
+          Your recovery check for &ldquo;{inquiry.problem_name}&rdquo; has been confirmed and logged with campus health.
+        </Text>
       </View>
     );
   }
@@ -56,62 +56,59 @@ export function RecoveryCard({ inquiry, onAnswer }: RecoveryCardProps) {
 
   return (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.badge}>
-          <HeartPulse color="#ffffff" size={14} />
-          <Text style={styles.badgeText}>End-of-Course Health Check</Text>
-        </View>
+      <View style={styles.headerRow}>
+        <HeartPulse size={18} color="#0284C7" />
+        <Text style={styles.badgeText}>POST-COURSE RECOVERY CHECK</Text>
       </View>
-
-      <Text style={styles.questionText}>
-        Is your {inquiry.problem_name.toLowerCase()} better?
-      </Text>
-      <Text style={styles.subText}>
-        Your medication course is finished. Tap below to report your recovery status to Dr. Verma.
+      <Text style={styles.title}>How are you feeling?</Text>
+      <Text style={styles.subtext}>
+        Your prescription course ended recently. Please confirm your current health status for doctor follow-up:
       </Text>
 
-      {!isEscalated ? (
-        <View style={styles.buttonRow}>
+      {isEscalated ? (
+        <View style={styles.escalatedBox}>
+          <View style={styles.escalatedHeader}>
+            <AlertTriangle size={16} color="#B91C1C" />
+            <Text style={styles.escalatedHeading}>
+              {answeredState === 'worse' ? 'Alert Logged: Feeling Worse' : 'Alert Logged: Symptoms Unchanged'}
+            </Text>
+          </View>
+          <Text style={styles.escalatedText}>
+            A high-priority alert was dispatched to your doctor and Health Officer. An officer may reach out to check on you.
+          </Text>
           <TouchableOpacity
-            style={[styles.answerButton, styles.betterButton]}
-            onPress={() => handleSelect('better')}
+            style={styles.contactBtn}
+            onPress={handleContactDoctor}
             activeOpacity={0.8}
           >
-            <Text style={styles.betterText}>Better</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.answerButton, styles.sameButton]}
-            onPress={() => handleSelect('same')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.sameText}>Same</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.answerButton, styles.worseButton]}
-            onPress={() => handleSelect('worse')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.worseText}>Worse</Text>
+            <PhoneCall size={14} color="#FFFFFF" style={{ marginRight: 6 }} />
+            <Text style={styles.contactBtnText}>Call Campus Health Centre</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.alertBanner}>
-          <View style={styles.alertHeader}>
-            <AlertOctagon color="#b91c1c" size={20} />
-            <Text style={styles.alertTitle}>Doctor & Health Officer Notified</Text>
-          </View>
-          <Text style={styles.alertBody}>
-            Since you reported feeling &ldquo;{answeredState}&rdquo;, a red priority alert has been sent to your doctor and campus health officer.
-          </Text>
+        <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={styles.contactDocBtn}
-            onPress={handleContactDoctor}
-            activeOpacity={0.85}
+            style={[styles.btn, styles.btnBetter]}
+            onPress={() => handleSelect('better')}
+            activeOpacity={0.8}
           >
-            <PhoneCall color="#ffffff" size={16} />
-            <Text style={styles.contactDocText}>Contact Campus Clinic Doctor</Text>
+            <Text style={styles.btnBetterText}>Better</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.btn, styles.btnSame]}
+            onPress={() => handleSelect('same')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnSameText}>Same</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.btn, styles.btnWorse]}
+            onPress={() => handleSelect('worse')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnWorseText}>Worse</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -121,142 +118,126 @@ export function RecoveryCard({ inquiry, onAnswer }: RecoveryCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#0a0a0a',
-    borderRadius: 24,
-    padding: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  resolvedCard: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardSuccess: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  resolvedTextContainer: {
-    flex: 1,
-  },
-  resolvedTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#166534',
-  },
-  resolvedSub: {
-    fontSize: 12,
-    color: '#15803d',
-    marginTop: 2,
-  },
-  cardHeader: {
-    marginBottom: 12,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#27272a',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
     gap: 6,
+    marginBottom: 6,
   },
   badgeText: {
-    color: '#ffffff',
     fontSize: 11,
     fontWeight: '700',
+    color: '#0284C7',
+    letterSpacing: 0.6,
   },
-  questionText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: -0.4,
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F1B33',
+    marginBottom: 4,
   },
-  subText: {
+  successTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  subtext: {
     fontSize: 13,
-    color: '#a1a1aa',
-    marginTop: 6,
+    color: '#64748B',
     lineHeight: 18,
-    marginBottom: 18,
+    marginBottom: 16,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  answerButton: {
+  btn: {
     flex: 1,
     height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
+    borderRadius: 10,
     justifyContent: 'center',
-  },
-  betterButton: {
-    backgroundColor: '#ffffff',
-  },
-  betterText: {
-    color: '#0a0a0a',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  sameButton: {
-    backgroundColor: '#18181b',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#27272a',
   },
-  sameText: {
-    color: '#fbbf24', // Amber
+  btnBetter: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  btnBetterText: {
+    color: '#065F46',
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 14,
   },
-  worseButton: {
-    backgroundColor: '#18181b',
-    borderWidth: 1,
-    borderColor: '#27272a',
+  btnSame: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
   },
-  worseText: {
-    color: '#f87171', // Red
+  btnSameText: {
+    color: '#92400E',
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 14,
   },
-  alertBanner: {
-    backgroundColor: '#fef2f2',
+  btnWorse: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  btnWorseText: {
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  escalatedBox: {
+    padding: 14,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#fca5a5',
-    borderRadius: 16,
-    padding: 16,
+    borderColor: '#FECACA',
   },
-  alertHeader: {
+  escalatedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    gap: 6,
+    marginBottom: 4,
   },
-  alertTitle: {
-    color: '#991b1b',
-    fontSize: 14,
-    fontWeight: '800',
+  escalatedHeading: {
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  alertBody: {
-    color: '#7f1d1d',
+  escalatedText: {
+    color: '#7F1D1D',
     fontSize: 12,
     lineHeight: 16,
-    marginBottom: 14,
+    marginBottom: 12,
   },
-  contactDocBtn: {
+  contactBtn: {
+    backgroundColor: '#B91C1C',
+    borderRadius: 8,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#dc2626',
-    borderRadius: 12,
-    height: 44,
-    gap: 8,
+    paddingHorizontal: 14,
   },
-  contactDocText: {
-    color: '#ffffff',
+  contactBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '700',
-    fontSize: 13,
   },
 });

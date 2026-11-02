@@ -1,96 +1,131 @@
-import Link from "next/link";
-import { Stethoscope, ShieldCheck, UserCheck, Lock } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+"use client";
 
-export default function LoginPage() {
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { RoleSelector } from "@/components/auth/RoleSelector";
+import { PinInput } from "@/components/auth/PinInput";
+import { UserRole } from "@/lib/auth/pin-service";
+
+export default function PinLoginPage() {
+  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+
+  const handleSelectRole = (role: UserRole) => {
+    setSelectedRole(role);
+    setIsError(false);
+    setIsSuccess(false);
+    setErrorMessage(null);
+  };
+
+  const handleBackToRoles = () => {
+    setSelectedRole(null);
+    setIsError(false);
+    setIsSuccess(false);
+    setErrorMessage(null);
+  };
+
+  const handlePinSubmit = async (pin: string) => {
+    if (!selectedRole || isLoading || isSuccess) return;
+
+    setIsLoading(true);
+    setIsError(false);
+    setErrorMessage(null);
+
+    try {
+      const res = await fetch("/api/auth/pin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: selectedRole, pin }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setIsSuccess(true);
+        setIsLoading(false);
+        setTimeout(() => {
+          window.location.href = data.redirectUrl || `/${selectedRole}`;
+        }, 500);
+      } else {
+        setIsError(true);
+        setIsLoading(false);
+        setErrorMessage(data.error || "Incorrect PIN entered.");
+        if (data.remainingAttempts !== undefined) {
+          setRemainingAttempts(data.remainingAttempts);
+        }
+      }
+    } catch (err: any) {
+      setIsError(true);
+      setIsLoading(false);
+      setErrorMessage(err?.message || "Connection failed. Please check network.");
+    }
+  };
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-            <ShieldCheck className="h-8 w-8" />
-          </div>
-          <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            KIET Smart Care
-          </h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            KIET Group of Institutions, Korangi, India
-          </p>
-          <p className="text-xs text-slate-500">
-            Central Staff Authentication Portal (Doctor, Officer, Admin)
-          </p>
+    <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-[var(--bg)] px-6 py-12">
+      {/* Centered Single Column (max-w 400px) */}
+      <div className="w-full max-w-[400px] flex flex-col items-center">
+        {/* Wordmark top of column */}
+        <div className="text-center font-semibold text-[14px] text-[var(--text)] mb-6 select-none">
+          KIET Smart Care
         </div>
 
-        <Card className="border-slate-200 shadow-xl dark:border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-xl">Staff Sign In</CardTitle>
-            <CardDescription>
-              Sign in with institutional credentials. Your role will automatically route you to your dedicated portal.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Institutional Email
-              </label>
-              <input
-                type="email"
-                placeholder="staff@kiet.edu"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
-                disabled
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Password
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900"
-                disabled
-              />
-            </div>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700" disabled>
-              <Lock className="mr-2 h-4 w-4" /> Sign In via Supabase Auth
-            </Button>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+        <AnimatePresence mode="wait">
+          {!selectedRole ? (
+            <motion.div
+              key="roles"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="w-full flex flex-col items-center"
+            >
+              <div className="text-center mb-6">
+                <h1 className="text-[24px] font-semibold leading-tight text-[var(--text)]">
+                  Who are you?
+                </h1>
+                <p className="mt-1 text-[14px] text-[var(--text-muted)]">
+                  Select your role to continue.
+                </p>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Portal Architecture Links
-                </span>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-3">
-              <Link href="/doctor" className="w-full">
-                <Button variant="outline" className="w-full justify-start text-xs border-blue-200 text-blue-700 hover:bg-blue-50">
-                  <Stethoscope className="mr-1.5 h-3.5 w-3.5 text-blue-600" /> Doctor
-                </Button>
-              </Link>
-              <Link href="/officer" className="w-full">
-                <Button variant="outline" className="w-full justify-start text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">
-                  <ShieldCheck className="mr-1.5 h-3.5 w-3.5 text-indigo-600" /> Officer
-                </Button>
-              </Link>
-              <Link href="/admin" className="w-full">
-                <Button variant="outline" className="w-full justify-start text-xs border-slate-800 text-slate-900 hover:bg-slate-100 dark:text-white">
-                  <UserCheck className="mr-1.5 h-3.5 w-3.5" /> Admin
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <p className="text-center text-xs text-slate-500">
-          Student portal is accessible exclusively through the KIET Smart Care Expo Mobile App.
-        </p>
+              <RoleSelector onSelectRole={handleSelectRole} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="pin"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="w-full"
+            >
+              <PinInput
+                role={selectedRole}
+                length={selectedRole === "admin" ? 8 : 5}
+                onComplete={handlePinSubmit}
+                onBack={handleBackToRoles}
+                isLoading={isLoading}
+                isError={isError}
+                isSuccess={isSuccess}
+                errorMessage={errorMessage}
+                remainingAttempts={remainingAttempts}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* Fixed bottom-center footer */}
+      <footer className="fixed bottom-6 left-0 right-0 text-center select-none pointer-events-none">
+        <p className="text-[12px] text-[var(--text-muted)]">
+          KIET Group of Institutions, Ghaziabad
+        </p>
+      </footer>
     </div>
   );
 }

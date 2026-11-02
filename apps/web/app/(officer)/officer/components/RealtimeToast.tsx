@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { AlertOctagon, X, PhoneCall } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 interface RealtimeToastProps {
   onDismiss?: () => void;
@@ -16,18 +17,51 @@ export function RealtimeToast({ onDismiss }: RealtimeToastProps) {
     reason: string;
   } | null>(null);
 
-  // Simulate an incoming live alert via Supabase Realtime after 12 seconds
+  // Subscribe to real Supabase Realtime alerts channel
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setToastAlert({
-        id: "alt-live-99",
-        student_name: "Karan Johar",
-        roll_number: "2200290130099",
-        reason: "Worse",
-      });
-    }, 12000);
+    try {
+      const supabase = createClient();
 
-    return () => clearTimeout(timer);
+      const channel = supabase
+        .channel("officer_realtime_alerts")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "alerts" },
+          async (payload) => {
+            try {
+              const newAlert = payload.new as any;
+              if (newAlert.severity === "red") {
+                // Fetch student name and roll
+                const { data: student } = await supabase
+                  .from("students")
+                  .select("name, roll_number")
+                  .eq("id", newAlert.student_id)
+                  .maybeSingle();
+
+                setToastAlert({
+                  id: newAlert.id,
+                  student_name: (student as any)?.name || "Student",
+                  roll_number: (student as any)?.roll_number || "KIET",
+                  reason: newAlert.type === "worse" ? "Worse" : newAlert.type === "same" ? "Same" : "Adverse Reaction",
+                });
+              }
+            } catch {
+              // Ignore realtime payload parsing errors
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      // ignore
+    }
   }, []);
 
   if (!toastAlert) return null;
@@ -41,7 +75,7 @@ export function RealtimeToast({ onDismiss }: RealtimeToastProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 font-mono">
-              Realtime RED ALERT
+              Live RED ALERT
             </span>
             <button
               type="button"
@@ -58,15 +92,16 @@ export function RealtimeToast({ onDismiss }: RealtimeToastProps) {
             {toastAlert.student_name} ({toastAlert.roll_number})
           </div>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Reported outcome &ldquo;{toastAlert.reason}&rdquo; post-medication course.
+            Answered: <strong className="text-red-700">{toastAlert.reason}</strong> on course completion. Immediate triage required.
           </p>
-          <div className="mt-2.5 flex items-center space-x-2">
+          <div className="mt-3 flex items-center space-x-2">
             <Link
               href="/officer/alerts"
               onClick={() => setToastAlert(null)}
-              className="rounded-lg bg-red-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-red-700 transition-colors"
+              className="inline-flex items-center rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 shadow-sm transition-colors"
             >
-              Review Case &rarr;
+              <PhoneCall className="mr-1.5 h-3.5 w-3.5" />
+              Triage Outreach
             </Link>
           </div>
         </div>

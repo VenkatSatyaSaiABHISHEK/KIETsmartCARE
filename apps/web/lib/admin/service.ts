@@ -10,6 +10,7 @@ import {
   InvalidStudentImportRow,
 } from "./types";
 import { studentCreateSchema } from "./validation";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 // Global in-memory singleton for consistent admin state during runtime
 interface AdminStore {
@@ -365,6 +366,39 @@ export const adminService = {
 
     store.staff.unshift(newStaff);
 
+    // Sync with Supabase Auth & profiles table using service role key
+    try {
+      const supabaseAdmin = createAdminClient();
+      supabaseAdmin.auth.admin
+        .createUser({
+          email: data.email.toLowerCase(),
+          password: temporary_password,
+          email_confirm: true,
+          user_metadata: { full_name: data.name, role: data.role },
+        })
+        .then(async (res) => {
+          if (res.data?.user) {
+            await supabaseAdmin.from("profiles").upsert({
+              id: res.data.user.id,
+              role: data.role,
+              full_name: data.name,
+              phone: data.phone,
+              status: "active",
+            });
+            await supabaseAdmin.from("audit_logs").insert({
+              user_id: res.data.user.id,
+              action: "CREATE_STAFF",
+              table_name: "profiles",
+              record_id: res.data.user.id,
+              metadata: { role: data.role, email: data.email },
+            });
+          }
+        })
+        .catch((e) => console.warn("Supabase staff provisioning error:", e));
+    } catch (e) {
+      console.warn("createAdminClient error:", e);
+    }
+
     // Audit log
     this.logAdminAction({
       actor_email: "admin@kiet.edu",
@@ -604,6 +638,70 @@ export const adminService = {
       };
       store.students.push(newStudent);
     });
+
+    // Ingest into Supabase Auth & students tables via Service Role Key
+    try {
+      const supabaseAdmin = createAdminClient();
+      valid_records.forEach((v) => {
+        const studentEmail = `${v.roll_number.toLowerCase()}@students.kiet.local`;
+        supabaseAdmin.auth.admin
+          .createUser({
+            email: studentEmail,
+            password: v.temp_password,
+            email_confirm: true,
+            user_metadata: {
+              roll_number: v.roll_number,
+              full_name: v.name,
+              role: "student",
+              must_change_password: true,
+            },
+          })
+          .then(async (res) => {
+            if (res.data?.user) {
+              await supabaseAdmin.from("profiles").upsert({
+                id: res.data.user.id,
+                role: "student",
+                full_name: v.name,
+                phone: v.phone,
+                status: "active",
+              });
+              const { data: std } = await supabaseAdmin
+                .from("students")
+                .upsert(
+                  {
+                    profile_id: res.data.user.id,
+                    roll_number: v.roll_number,
+                    name: v.name,
+                    branch: v.branch,
+                    year: v.year,
+                    phone: v.phone,
+                    emergency_contact: v.emergency_contact,
+                    allergies: v.allergies,
+                    status: "active",
+                  },
+                  { onConflict: "roll_number" }
+                )
+                .select("id")
+                .single();
+
+              if (std) {
+                await supabaseAdmin.from("student_meal_times").upsert(
+                  {
+                    student_id: std.id,
+                    breakfast: "08:00:00",
+                    lunch: "13:00:00",
+                    dinner: "20:00:00",
+                  },
+                  { onConflict: "student_id" }
+                );
+              }
+            }
+          })
+          .catch((e) => console.warn("Supabase student roster import error:", e));
+      });
+    } catch (e) {
+      console.warn("createAdminClient bulk import error:", e);
+    }
 
     // Log the bulk import
     if (valid_records.length > 0) {

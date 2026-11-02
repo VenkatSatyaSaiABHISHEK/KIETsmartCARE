@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MEAL_RELATIONS, MEAL_TYPES } from '../constants';
+import { MEAL_RELATIONS } from '../constants';
 const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export const mealTimesSchema = z.object({
     breakfast: z.string().regex(timeRegex, 'Must be 24h format HH:mm (e.g. 08:00)'),
@@ -8,26 +8,23 @@ export const mealTimesSchema = z.object({
 });
 export const medicineEntrySchema = z.object({
     medicine_name: z.string().min(2, 'Medicine name is required'),
-    dose: z.string().min(1, 'Dose is required (e.g., 500mg, 1 tablet, 5ml)'),
-    times_per_day: z.number().int().min(1).max(5),
+    tablets_per_dose: z.number().int().min(1).max(3),
+    total_doses: z.number().int().min(1).max(7),
     meal_relation: z.enum(MEAL_RELATIONS),
-    meal_slots: z.array(z.enum(MEAL_TYPES)).min(1, 'Select at least one meal timing'),
-    number_of_days: z.number().int().min(1).max(30),
     instructions: z.string().optional(),
+    planned_slots: z.array(z.object({
+        slot_name: z.enum(['morning', 'afternoon', 'evening', 'night']),
+        scheduled_at: z.string().datetime(),
+        meal_relation: z.enum(MEAL_RELATIONS),
+        tablets: z.number().int().min(1).max(3),
+    })).min(1, 'At least one dose slot is required').max(7),
 });
 export const createVisitSchema = z.object({
     roll_number: z.string().min(3, 'Roll number is required').trim(),
     problem_category: z.string().min(2, 'Problem category is required'),
     clinical_notes: z.string().optional(),
-    vitals: z
-        .object({
-        blood_pressure: z.string().optional(),
-        pulse: z.number().int().optional(),
-        temperature_f: z.number().optional(),
-        spo2: z.number().int().min(50).max(100).optional(),
-    })
-        .optional(),
-    medicines: z.array(medicineEntrySchema).min(1, 'Add at least one medicine'),
+    follow_up_date: z.string().optional(),
+    medicines: z.array(medicineEntrySchema).min(1, 'Add at least one medicine').max(4, 'Maximum 4 medicines per visit'),
 });
 export const doseResponseSchema = z.object({
     dose_id: z.string().uuid(),

@@ -1,24 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
-// Route prefixes per role
-const ROLE_PERMITTED_ROUTES: Record<string, string[]> = {
-  doctor: ['/doctor', '/api/doctor'],
-  officer: ['/officer', '/api/officer'],
-  admin: ['/admin', '/api/admin'],
-};
+import { verifyEdgeSessionToken, UserRole } from './lib/auth/edge-session';
 
 export async function middleware(request: NextRequest) {
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
   const { pathname, hostname } = request.nextUrl;
 
-  // 1. Allow public assets, internal next assets, and health api
+  // 1. Allow public static assets and health/auth endpoints
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon.ico') ||
     pathname.startsWith('/api/health') ||
-    pathname.startsWith('/public')
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/student') ||
+    pathname.startsWith('/api/clinic') ||
+    pathname.startsWith('/public') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.jpg') ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.css') ||
+    pathname.endsWith('.js')
   ) {
-    return NextResponse.next();
+    return response;
   }
 
   // 2. Admin subdomain handling (e.g. admin.kiet.edu or admin.localhost:3000)
@@ -29,54 +37,68 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  // 3. Root landing page is public for staff login
-  if (pathname === '/') {
-    return NextResponse.next();
+  // 3. Root landing page is public; redirect legacy /admin/login to central PIN login
+  if (pathname === '/admin/login') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
   }
 
-  // 4. Role authentication token & cookie simulation / Supabase SSR session token
-  // During scaffold, cookies or mock role tokens determine access; real Supabase auth session token will be integrated in Prompt 6 (database/auth part)
-  const roleCookie = request.cookies.get('kiet_user_role')?.value;
+  if (pathname === '/' || pathname === '/login') {
+    return response;
+  }
 
-  // Route protection rules:
-  // - /admin pages only open for the admin role (except /admin/login)
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    if (roleCookie && roleCookie !== 'admin') {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = roleCookie === 'doctor' ? '/doctor' : '/officer';
-      return NextResponse.redirect(redirectUrl);
+  // 4. Strict session verification (No cookie spoofing, no insecure role fallbacks)
+  const sessionToken = request.cookies.get('kiet_session')?.value;
+  let userRole: UserRole | null = null;
+
+  if (sessionToken) {
+    const session = await verifyEdgeSessionToken(sessionToken);
+    if (session) {
+      userRole = session.role;
     }
   }
 
-  // - /doctor pages only open for doctor role
-  if (pathname.startsWith('/doctor')) {
-    if (roleCookie && roleCookie !== 'doctor') {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = roleCookie === 'admin' ? '/admin' : '/officer';
-      return NextResponse.redirect(redirectUrl);
+  // If no valid session token exists, clear cookies and redirect to login
+  if (!userRole) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Session expired or invalid' },
+        { status: 401 }
+      );
     }
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/';
+    const redirectRes = NextResponse.redirect(redirectUrl);
+    redirectRes.cookies.delete('kiet_session');
+    redirectRes.cookies.delete('kiet_user_role');
+    return redirectRes;
   }
 
-  // - /officer pages only open for officer role
-  if (pathname.startsWith('/officer')) {
-    if (roleCookie && roleCookie !== 'officer') {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = roleCookie === 'admin' ? '/admin' : '/doctor';
-      return NextResponse.redirect(redirectUrl);
-    }
+  // 5. Protected portal boundaries
+  if (pathname.startsWith('/admin') && userRole !== 'admin') {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/';
+    return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
+  if (pathname.startsWith('/doctor') && userRole !== 'doctor') {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/';
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (pathname.startsWith('/officer') && userRole !== 'officer') {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = '/';
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

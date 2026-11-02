@@ -14,72 +14,101 @@ export declare const mealTimesSchema: z.ZodObject<{
 }>;
 export declare const medicineEntrySchema: z.ZodObject<{
     medicine_name: z.ZodString;
-    dose: z.ZodString;
-    times_per_day: z.ZodNumber;
+    tablets_per_dose: z.ZodNumber;
+    total_doses: z.ZodNumber;
     meal_relation: z.ZodEnum<["before", "after"]>;
-    meal_slots: z.ZodArray<z.ZodEnum<["breakfast", "lunch", "dinner"]>, "many">;
-    number_of_days: z.ZodNumber;
     instructions: z.ZodOptional<z.ZodString>;
+    planned_slots: z.ZodArray<z.ZodObject<{
+        slot_name: z.ZodEnum<["morning", "afternoon", "evening", "night"]>;
+        scheduled_at: z.ZodString;
+        meal_relation: z.ZodEnum<["before", "after"]>;
+        tablets: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        meal_relation: "before" | "after";
+        slot_name: "morning" | "afternoon" | "evening" | "night";
+        scheduled_at: string;
+        tablets: number;
+    }, {
+        meal_relation: "before" | "after";
+        slot_name: "morning" | "afternoon" | "evening" | "night";
+        scheduled_at: string;
+        tablets: number;
+    }>, "many">;
 }, "strip", z.ZodTypeAny, {
     medicine_name: string;
-    dose: string;
-    times_per_day: number;
+    tablets_per_dose: number;
+    total_doses: number;
     meal_relation: "before" | "after";
-    meal_slots: ("breakfast" | "lunch" | "dinner")[];
-    number_of_days: number;
+    planned_slots: {
+        meal_relation: "before" | "after";
+        slot_name: "morning" | "afternoon" | "evening" | "night";
+        scheduled_at: string;
+        tablets: number;
+    }[];
     instructions?: string | undefined;
 }, {
     medicine_name: string;
-    dose: string;
-    times_per_day: number;
+    tablets_per_dose: number;
+    total_doses: number;
     meal_relation: "before" | "after";
-    meal_slots: ("breakfast" | "lunch" | "dinner")[];
-    number_of_days: number;
+    planned_slots: {
+        meal_relation: "before" | "after";
+        slot_name: "morning" | "afternoon" | "evening" | "night";
+        scheduled_at: string;
+        tablets: number;
+    }[];
     instructions?: string | undefined;
 }>;
 export declare const createVisitSchema: z.ZodObject<{
     roll_number: z.ZodString;
     problem_category: z.ZodString;
     clinical_notes: z.ZodOptional<z.ZodString>;
-    vitals: z.ZodOptional<z.ZodObject<{
-        blood_pressure: z.ZodOptional<z.ZodString>;
-        pulse: z.ZodOptional<z.ZodNumber>;
-        temperature_f: z.ZodOptional<z.ZodNumber>;
-        spo2: z.ZodOptional<z.ZodNumber>;
-    }, "strip", z.ZodTypeAny, {
-        blood_pressure?: string | undefined;
-        pulse?: number | undefined;
-        temperature_f?: number | undefined;
-        spo2?: number | undefined;
-    }, {
-        blood_pressure?: string | undefined;
-        pulse?: number | undefined;
-        temperature_f?: number | undefined;
-        spo2?: number | undefined;
-    }>>;
+    follow_up_date: z.ZodOptional<z.ZodString>;
     medicines: z.ZodArray<z.ZodObject<{
         medicine_name: z.ZodString;
-        dose: z.ZodString;
-        times_per_day: z.ZodNumber;
+        tablets_per_dose: z.ZodNumber;
+        total_doses: z.ZodNumber;
         meal_relation: z.ZodEnum<["before", "after"]>;
-        meal_slots: z.ZodArray<z.ZodEnum<["breakfast", "lunch", "dinner"]>, "many">;
-        number_of_days: z.ZodNumber;
         instructions: z.ZodOptional<z.ZodString>;
+        planned_slots: z.ZodArray<z.ZodObject<{
+            slot_name: z.ZodEnum<["morning", "afternoon", "evening", "night"]>;
+            scheduled_at: z.ZodString;
+            meal_relation: z.ZodEnum<["before", "after"]>;
+            tablets: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            meal_relation: "before" | "after";
+            slot_name: "morning" | "afternoon" | "evening" | "night";
+            scheduled_at: string;
+            tablets: number;
+        }, {
+            meal_relation: "before" | "after";
+            slot_name: "morning" | "afternoon" | "evening" | "night";
+            scheduled_at: string;
+            tablets: number;
+        }>, "many">;
     }, "strip", z.ZodTypeAny, {
         medicine_name: string;
-        dose: string;
-        times_per_day: number;
+        tablets_per_dose: number;
+        total_doses: number;
         meal_relation: "before" | "after";
-        meal_slots: ("breakfast" | "lunch" | "dinner")[];
-        number_of_days: number;
+        planned_slots: {
+            meal_relation: "before" | "after";
+            slot_name: "morning" | "afternoon" | "evening" | "night";
+            scheduled_at: string;
+            tablets: number;
+        }[];
         instructions?: string | undefined;
     }, {
         medicine_name: string;
-        dose: string;
-        times_per_day: number;
+        tablets_per_dose: number;
+        total_doses: number;
         meal_relation: "before" | "after";
-        meal_slots: ("breakfast" | "lunch" | "dinner")[];
-        number_of_days: number;
+        planned_slots: {
+            meal_relation: "before" | "after";
+            slot_name: "morning" | "afternoon" | "evening" | "night";
+            scheduled_at: string;
+            tablets: number;
+        }[];
         instructions?: string | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
@@ -87,39 +116,37 @@ export declare const createVisitSchema: z.ZodObject<{
     problem_category: string;
     medicines: {
         medicine_name: string;
-        dose: string;
-        times_per_day: number;
+        tablets_per_dose: number;
+        total_doses: number;
         meal_relation: "before" | "after";
-        meal_slots: ("breakfast" | "lunch" | "dinner")[];
-        number_of_days: number;
+        planned_slots: {
+            meal_relation: "before" | "after";
+            slot_name: "morning" | "afternoon" | "evening" | "night";
+            scheduled_at: string;
+            tablets: number;
+        }[];
         instructions?: string | undefined;
     }[];
     clinical_notes?: string | undefined;
-    vitals?: {
-        blood_pressure?: string | undefined;
-        pulse?: number | undefined;
-        temperature_f?: number | undefined;
-        spo2?: number | undefined;
-    } | undefined;
+    follow_up_date?: string | undefined;
 }, {
     roll_number: string;
     problem_category: string;
     medicines: {
         medicine_name: string;
-        dose: string;
-        times_per_day: number;
+        tablets_per_dose: number;
+        total_doses: number;
         meal_relation: "before" | "after";
-        meal_slots: ("breakfast" | "lunch" | "dinner")[];
-        number_of_days: number;
+        planned_slots: {
+            meal_relation: "before" | "after";
+            slot_name: "morning" | "afternoon" | "evening" | "night";
+            scheduled_at: string;
+            tablets: number;
+        }[];
         instructions?: string | undefined;
     }[];
     clinical_notes?: string | undefined;
-    vitals?: {
-        blood_pressure?: string | undefined;
-        pulse?: number | undefined;
-        temperature_f?: number | undefined;
-        spo2?: number | undefined;
-    } | undefined;
+    follow_up_date?: string | undefined;
 }>;
 export declare const doseResponseSchema: z.ZodObject<{
     dose_id: z.ZodString;

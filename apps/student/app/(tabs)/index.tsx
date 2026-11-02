@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
   SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import {
-  AlertTriangle,
-  ArrowRight,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react-native';
+import { Volume2 } from 'lucide-react-native';
 import { NextDoseCard } from '../../src/components/NextDoseCard';
 import { RecoveryCard } from '../../src/components/RecoveryCard';
-import { TodayTimeline } from '../../src/components/TodayTimeline';
+import { AlarmTakeoverModal } from '../../src/components/AlarmTakeoverModal';
 import { StudentApi } from '../../src/services/student-api';
 import { ReminderEngine } from '../../src/services/reminder-engine';
+import {
+  playAlarmChime,
+  startContinuousAlarm,
+  stopAlarm,
+  enableAudioAndNotifications,
+} from '../../src/services/sound-player';
 import {
   DoseScheduleRecord,
   RecoveryInquiry,
@@ -27,11 +27,21 @@ import {
 } from '../../src/types/student';
 
 export default function StudentHomeScreen() {
-  const router = useRouter();
   const [profile, setProfile] = useState<StudentProfileData | null>(null);
   const [doses, setDoses] = useState<DoseScheduleRecord[]>([]);
   const [recoveryInquiry, setRecoveryInquiry] = useState<RecoveryInquiry | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeAlarmDose, setActiveAlarmDose] = useState<DoseScheduleRecord | null>(null);
+  const [soundTested, setSoundTested] = useState(false);
+
+  // Track already sounded doses to avoid repeat ringing
+  const alarmedDoseIdsRef = useRef<Set<string>>(new Set());
+  const dosesRef = useRef<DoseScheduleRecord[]>([]);
+
+  // Keep ref up to date on each state change
+  useEffect(() => {
+    dosesRef.current = doses;
+  }, [doses]);
 
   const loadStudentData = async () => {
     const [prof, dList, rec] = await Promise.all([
@@ -41,23 +51,89 @@ export default function StudentHomeScreen() {
     ]);
     setProfile(prof);
     setDoses(dList);
+    dosesRef.current = dList;
     setRecoveryInquiry(rec);
+    return { prof, dList };
+  };
+
+  // Check upcoming doses against current time and trigger continuous alarm
+  const checkDueAlarms = (doseList: DoseScheduleRecord[]) => {
+    const now = new Date().getTime();
+
+    for (const dose of doseList) {
+      if (dose.status !== 'scheduled' && dose.status !== 'unconfirmed') continue;
+      if (!dose.scheduled_at && !dose.time && !dose.scheduled_time) continue;
+
+      let doseTimeMs = 0;
+      if (dose.scheduled_at) {
+        doseTimeMs = new Date(dose.scheduled_at).getTime();
+      } else {
+        const timeParts = (dose.time || dose.scheduled_time || '').split(':').map(Number);
+        if (timeParts.length >= 2) {
+          const d = new Date();
+          d.setHours(timeParts[0], timeParts[1], 0, 0);
+          doseTimeMs = d.getTime();
+        }
+      }
+
+      // If scheduled time has arrived (within the last 30 minutes)
+      const diffMs = now - doseTimeMs;
+      const isDueNow = diffMs >= 0 && diffMs <= 30 * 60 * 1000;
+
+      if (isDueNow && !alarmedDoseIdsRef.current.has(dose.id)) {
+        alarmedDoseIdsRef.current.add(dose.id);
+        setActiveAlarmDose(dose);
+        startContinuousAlarm();
+        break;
+      }
+    }
   };
 
   useEffect(() => {
-    loadStudentData();
+    loadStudentData().then((res) => {
+      if (res?.dList) checkDueAlarms(res.dList);
+    });
+
+    // 1. High-precision 1-second clock: checks current second against target alarm time with ZERO lag
+    const clockInterval = setInterval(() => {
+      checkDueAlarms(dosesRef.current);
+    }, 1000);
+
+    // 2. High-speed 2.5-second background sync: catches live doctor prescriptions immediately
+    const pollInterval = setInterval(async () => {
+      try {
+        const freshDoses = await StudentApi.getDoses();
+        setDoses(freshDoses);
+        dosesRef.current = freshDoses;
+        checkDueAlarms(freshDoses);
+      } catch (err) {
+        console.warn('Dose check error:', err);
+      }
+    }, 2500);
+
+    return () => {
+      clearInterval(clockInterval);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await loadStudentData();
+      const res = await loadStudentData();
+      if (res?.dList) checkDueAlarms(res.dList);
       if (profile) {
         await ReminderEngine.syncAndScheduleAll(doses, profile.meal_times);
       }
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  const handleTestSound = async () => {
+    await enableAudioAndNotifications();
+    await playAlarmChime();
+    setSoundTested(true);
   };
 
   // Find next upcoming scheduled/unconfirmed dose
@@ -67,9 +143,32 @@ export default function StudentHomeScreen() {
     doseId: string,
     status: 'taken' | 'taken_late' | 'not_taken'
   ) => {
+    stopAlarm();
+    setActiveAlarmDose(null);
+
+    // Optimistically update UI
+    setDoses((prev) =>
+      prev.map((d) => (d.id === doseId ? { ...d, status } : d))
+    );
+
     await StudentApi.submitDoseAnswer(doseId, status);
     await ReminderEngine.recordDoseResponse(doseId, status);
     await loadStudentData();
+  };
+
+  const handleSnooze = (doseId: string) => {
+    stopAlarm();
+    setActiveAlarmDose(null);
+
+    // Remove from alarmed IDs so it re-triggers in 5 minutes
+    setTimeout(() => {
+      alarmedDoseIdsRef.current.delete(doseId);
+    }, 5 * 60 * 1000);
+  };
+
+  const handleDismiss = () => {
+    stopAlarm();
+    setActiveAlarmDose(null);
   };
 
   const handleAnswerRecovery = async (response: 'better' | 'same' | 'worse') => {
@@ -79,8 +178,24 @@ export default function StudentHomeScreen() {
     }
   };
 
+  const firstName = profile?.full_name ? profile.full_name.split(' ')[0] : 'Student';
+  const todayFormatted = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView style={styles.container}>
+      {/* 1. Full-Screen Alarm Takeover (Rings continuously like real alarm clock) */}
+      <AlarmTakeoverModal
+        visible={Boolean(activeAlarmDose)}
+        dose={activeAlarmDose}
+        onTakeDose={handleAnswerDose}
+        onSnooze={handleSnooze}
+        onDismiss={handleDismiss}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -88,135 +203,227 @@ export default function StudentHomeScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Welcome Greeting Banner */}
-        <View style={styles.greetingSection}>
-          <View>
-            <Text style={styles.greetingSub}>CAMPUS HEALTHCARE STATUS</Text>
-            <Text style={styles.greetingTitle}>
-              Hello, {profile?.full_name ? profile.full_name.split(' ')[0] : 'Student'}
-            </Text>
+        {/* Header Section with Audio Test Pill */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.brandTitle}>KIET SMART CARE</Text>
+            <TouchableOpacity
+              style={[styles.soundPill, soundTested && styles.soundPillActive]}
+              onPress={handleTestSound}
+              activeOpacity={0.8}
+            >
+              <Volume2 size={14} color={soundTested ? '#059669' : '#0284C7'} />
+              <Text style={[styles.soundPillText, soundTested && styles.soundPillTextActive]}>
+                {soundTested ? 'Sound Verified \u2713' : 'Test Sound \uD83D\uDD0A'}
+              </Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.offlineAlarmPill}>
-            <ShieldCheck color="#166534" size={13} />
-            <Text style={styles.offlineAlarmPillText}>Alarms Active Offline</Text>
-          </View>
+          <Text style={styles.greetingTitle}>Hello, {firstName}</Text>
+          <Text style={styles.dateSubtext}>{todayFormatted}</Text>
         </View>
 
-        {/* 1. Large "Next Dose" Black Card with Three Big Buttons */}
-        <NextDoseCard dose={nextDose} onAnswerDose={handleAnswerDose} />
+        {/* 2. Main Action Cards */}
+        <View style={styles.cardSection}>
+          {recoveryInquiry && (
+            <RecoveryCard
+              inquiry={recoveryInquiry}
+              onAnswer={handleAnswerRecovery}
+            />
+          )}
 
-        {/* 2. End-of-Course Recovery Card (Prominent inquiry: Better, Same, Worse) */}
-        {recoveryInquiry && (
-          <RecoveryCard
-            inquiry={recoveryInquiry}
-            onAnswer={handleAnswerRecovery}
+          <NextDoseCard
+            dose={nextDose}
+            allTodayDoses={doses}
+            onAnswerDose={handleAnswerDose}
           />
-        )}
+        </View>
 
-        {/* 3. Report a Problem / Side Effect Action Card */}
-        <TouchableOpacity
-          style={styles.problemCard}
-          onPress={() => router.push('/report-problem')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.problemLeft}>
-            <View style={styles.problemIconBadge}>
-              <AlertTriangle color="#ea580c" size={18} />
-            </View>
-            <View>
-              <Text style={styles.problemTitle}>Experiencing a Side Effect?</Text>
-              <Text style={styles.problemSub}>
-                Flag any dizziness, allergy, or discomfort to your doctor.
+        {/* 3. Today's Schedule List */}
+        <View style={styles.scheduleSection}>
+          <Text style={styles.sectionHeading}>TODAY&apos;S SCHEDULE</Text>
+
+          {doses.length === 0 ? (
+            <View style={styles.emptySchedule}>
+              <Text style={styles.emptyScheduleText}>
+                No doses scheduled for today.
               </Text>
             </View>
-          </View>
-          <ArrowRight color="#a1a1aa" size={16} />
-        </TouchableOpacity>
+          ) : (
+            <View style={styles.scheduleList}>
+              {doses.map((d, index) => {
+                const statusColor =
+                  d.status === 'taken' || d.status === 'taken_late'
+                    ? '#166534'
+                    : d.status === 'not_taken'
+                    ? '#991B1B'
+                    : '#555555';
 
-        {/* 4. Today's Chronological Medication Timeline */}
-        <TodayTimeline doses={doses} />
+                const statusLabel =
+                  d.status === 'taken'
+                    ? 'Taken'
+                    : d.status === 'taken_late'
+                    ? 'Taken Late'
+                    : d.status === 'not_taken'
+                    ? 'Missed'
+                    : 'Upcoming';
+
+                return (
+                  <View key={d.id || index} style={styles.scheduleRow}>
+                    <View style={styles.timeCol}>
+                      <Text style={styles.timeText}>{d.time || d.scheduled_time}</Text>
+                      <Text style={styles.slotSubtext}>
+                        {d.meal_relation === 'after' ? 'After' : 'Before'} {d.slot || d.meal_slot}
+                      </Text>
+                    </View>
+
+                    <View style={styles.medCol}>
+                      <Text style={styles.medText}>{d.medicine_name}</Text>
+                      <Text style={styles.doseSubtext}>
+                        {d.tablets ? `${d.tablets} tablet${d.tablets > 1 ? 's' : ''}` : d.dose || '1 tablet'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.statusCol}>
+                      <Text style={[styles.statusText, { color: statusColor }]}>
+                        {statusLabel}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
+    paddingBottom: 90,
+  },
+  header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
-    gap: 18,
+    paddingBottom: 12,
   },
-  greetingSection: {
+  headerTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  greetingSub: {
+  brandTitle: {
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1.2,
-    color: '#71717a',
+    letterSpacing: 1.5,
+    color: '#0284C7',
+  },
+  soundPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  soundPillActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  soundPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  soundPillTextActive: {
+    color: '#059669',
   },
   greetingTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    letterSpacing: -0.4,
+    fontWeight: '700',
+    color: '#121212',
+    letterSpacing: -0.3,
   },
-  offlineAlarmPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f0fdf4',
-    borderWidth: 1,
-    borderColor: '#bbf7d0',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    gap: 5,
+  dateSubtext: {
+    fontSize: 13,
+    color: '#555555',
+    marginTop: 2,
   },
-  offlineAlarmPillText: {
-    color: '#166534',
+  cardSection: {
+    paddingHorizontal: 20,
+    marginTop: 12,
+  },
+  scheduleSection: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
+  sectionHeading: {
     fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 1,
+    color: '#555555',
+    marginBottom: 12,
   },
-  problemCard: {
+  emptySchedule: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyScheduleText: {
+    fontSize: 13,
+    color: '#555555',
+  },
+  scheduleList: {
+    borderTopWidth: 1,
+    borderTopColor: '#EBEBEB',
+  },
+  scheduleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff7ed',
-    borderWidth: 1,
-    borderColor: '#fed7aa',
-    borderRadius: 20,
-    padding: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBEBEB',
+    minHeight: 52,
   },
-  problemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
+  timeCol: {
+    width: 72,
   },
-  problemIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: '#ffedd5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  problemTitle: {
+  timeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#9a3412',
+    color: '#121212',
   },
-  problemSub: {
+  slotSubtext: {
     fontSize: 11,
-    color: '#c2410c',
-    marginTop: 2,
+    color: '#555555',
+    textTransform: 'capitalize',
+  },
+  medCol: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  medText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#121212',
+  },
+  doseSubtext: {
+    fontSize: 12,
+    color: '#555555',
+  },
+  statusCol: {
+    alignItems: 'flex-end',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

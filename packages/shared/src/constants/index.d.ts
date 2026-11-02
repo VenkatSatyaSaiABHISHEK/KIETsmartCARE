@@ -2,6 +2,9 @@ export declare const USER_ROLES: readonly ["admin", "doctor", "officer", "studen
 export type UserRole = (typeof USER_ROLES)[number];
 export declare const MEAL_TYPES: readonly ["breakfast", "lunch", "dinner"];
 export type MealType = (typeof MEAL_TYPES)[number];
+export declare const CLINICAL_DOSE_SLOTS: readonly ["morning", "afternoon", "evening", "night"];
+export type ClinicalDoseSlot = (typeof CLINICAL_DOSE_SLOTS)[number];
+export declare const DEFAULT_SLOT_TIMES: Record<ClinicalDoseSlot, string>;
 export declare const MEAL_RELATIONS: readonly ["before", "after"];
 export type MealRelation = (typeof MEAL_RELATIONS)[number];
 export declare const DEFAULT_MEAL_TIMES: Record<MealType, string>;

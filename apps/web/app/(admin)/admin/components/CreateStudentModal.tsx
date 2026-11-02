@@ -285,65 +285,22 @@ export function CreateStudentModal({
             </div>
           </div>
 
-          {/* Allergies tag manager */}
+          {/* Optional medical allergy note */}
           <div>
-            <label className="block font-semibold text-neutral-700 uppercase tracking-wider mb-1.5">
-              Medical Allergies & Drug Sensitivities
+            <label className="block font-semibold text-neutral-700 uppercase tracking-wider mb-1">
+              Known Medical Allergies (Optional)
             </label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {COMMON_ALLERGIES.map((allergy) => {
-                const isSelected = allergies.includes(allergy);
-                return (
-                  <button
-                    key={allergy}
-                    type="button"
-                    onClick={() => handleToggleAllergy(allergy)}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-medium border transition-colors ${
-                      isSelected
-                        ? "border-black bg-black text-white"
-                        : "border-[#E5E5E5] bg-white text-neutral-700 hover:border-black"
-                    }`}
-                  >
-                    {allergy}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom allergy input */}
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                placeholder="Add other known allergy (e.g. Erythromycin)"
-                value={customAllergy}
-                onChange={(e) => setCustomAllergy(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (customAllergy.trim() && !allergies.includes(customAllergy.trim())) {
-                      setAllergies([...allergies, customAllergy.trim()]);
-                      setCustomAllergy("");
-                    }
-                  }
-                }}
-                className="flex-1 rounded-lg border border-[#E5E5E5] px-3 py-1.5 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddCustomAllergy}
-                className="rounded-lg border-[#E5E5E5] text-xs h-8 px-2.5"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add
-              </Button>
-            </div>
-
-            {allergies.length > 0 && (
-              <div className="mt-2 text-[11px] text-neutral-600 flex items-center space-x-1">
-                <span className="font-semibold text-black">Active tags:</span>
-                <span>{allergies.join(", ")}</span>
-              </div>
-            )}
+            <input
+              type="text"
+              placeholder="e.g. Penicillin, Peanuts (leave blank if none)"
+              value={customAllergy}
+              onChange={(e) => {
+                setCustomAllergy(e.target.value);
+                const items = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                setAllergies(items);
+              }}
+              className="w-full rounded-lg border border-[#E5E5E5] px-3 py-2 text-xs text-black placeholder:text-neutral-400 focus:border-black focus:outline-none"
+            />
           </div>
 
           <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#E5E5E5]">
