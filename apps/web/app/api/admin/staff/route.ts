@@ -62,11 +62,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "PIN must be exactly 5 numeric digits (e.g. 12345)" }, { status: 400 });
     }
 
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({
+        error: "Missing SUPABASE_SERVICE_ROLE_KEY in Vercel Environment Variables. Please add your Supabase Service Role Key in Vercel Project Settings -> Environment Variables.",
+      }, { status: 500 });
+    }
+
     const supabase = createAdminClient();
 
     // 1. Create or resolve user in auth.users
     const staffEmail = email?.trim() || `${role}.${cleanPhone}@kiet.edu`;
     let authUserId: string | null = null;
+    let authErrorDetail: string | null = null;
 
     try {
       const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
@@ -82,16 +89,22 @@ export async function POST(request: NextRequest) {
       if (authUser?.user) {
         authUserId = authUser.user.id;
       } else if (authErr) {
+        authErrorDetail = authErr.message;
         const { data: userList } = await supabase.auth.admin.listUsers();
         const match = userList?.users?.find((u) => u.email === staffEmail);
         if (match) authUserId = match.id;
       }
-    } catch (authException) {
+    } catch (authException: any) {
+      authErrorDetail = authException?.message || String(authException);
       console.warn("[STAFF CREATION AUTH NOTICE]", authException);
     }
 
     if (!authUserId) {
-      return NextResponse.json({ error: "Failed to create staff authentication identity" }, { status: 500 });
+      return NextResponse.json({
+        error: authErrorDetail
+          ? `Authentication error: ${authErrorDetail}. (Ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel environment variables)`
+          : "Failed to create staff authentication identity. (Ensure SUPABASE_SERVICE_ROLE_KEY is configured in Vercel environment variables)",
+      }, { status: 500 });
     }
 
     // 2. Insert into profiles table
