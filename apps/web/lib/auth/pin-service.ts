@@ -30,23 +30,11 @@ const SESSION_SECRET = process.env.PIN_SESSION_SECRET || process.env.SUPABASE_JW
 const LOCKOUT_MINUTES = 15;
 const MAX_FAILED_ATTEMPTS = 5;
 
-// Default seeds in case database is offline / demo mode
-const DEMO_SEEDS: Record<UserRole, { name: string; pinHash: string; length: number }> = {
-  admin: {
-    name: 'Master Administrator',
-    pinHash: '$2b$10$btORtiHoQd93x5Hoe5RwJ.CKWODh./OR5k6mhqOHtrr1MXEkEbStO', // 31012005
-    length: 8,
-  },
-  doctor: {
-    name: 'Dr. Alok Verma (OPD Clinic)',
-    pinHash: '$2b$10$uQdPG1wR984/n9CRcPoOEuxKPSbLgByXsRdfdmqKZb0McpRELz/jC', // 00000
-    length: 5,
-  },
-  officer: {
-    name: 'Health Officer Sharma',
-    pinHash: '$2b$10$uQdPG1wR984/n9CRcPoOEuxKPSbLgByXsRdfdmqKZb0McpRELz/jC', // 00000
-    length: 5,
-  },
+// Emergency fallback only for Master Administrator if database is temporarily unreachable
+const MASTER_ADMIN_FALLBACK = {
+  name: 'Master Administrator',
+  pinHash: '$2b$10$btORtiHoQd93x5Hoe5RwJ.CKWODh./OR5k6mhqOHtrr1MXEkEbStO', // 31012005
+  length: 8,
 };
 
 // In-memory rate limiting store as high-speed buffer & offline fallback
@@ -271,15 +259,21 @@ export class PinAuthService {
       }
     }
 
-    // If no credentials found in DB, fallback to demo seed
+    // If no credentials found in DB, only allow Master Admin emergency fallback
     if (activeCredentials.length === 0) {
-      const seed = DEMO_SEEDS[role];
-      activeCredentials.push({
-        id: `seed-${role}`,
-        name: seed.name,
-        role,
-        pin_hash: seed.pinHash,
-      });
+      if (role === 'admin') {
+        activeCredentials.push({
+          id: 'seed-admin',
+          name: MASTER_ADMIN_FALLBACK.name,
+          role: 'admin',
+          pin_hash: MASTER_ADMIN_FALLBACK.pinHash,
+        });
+      } else {
+        return {
+          success: false,
+          error: `No active ${role} accounts provisioned yet. Please contact the administrator.`,
+        };
+      }
     }
 
     // 3. Constant-time / bcrypt match against all active credentials for that role

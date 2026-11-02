@@ -4,9 +4,11 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { CreateStaffModal } from "./components/CreateStaffModal";
 import { CreateStudentModal } from "./components/CreateStudentModal";
+import { BulkImportModal } from "./components/BulkImportModal";
 import { OneTimePasswordModal } from "./components/OneTimePasswordModal";
 import { DateTimeWidget } from "@/components/ui/DateTimeWidget";
 import { StatusDot } from "@/components/ui/StatusDot";
+import { SkeletonLoader } from "@/components/ui/SkeletonLoader";
 import {
   AdminOverviewMetrics,
   AdminAuditLogEntry,
@@ -16,17 +18,19 @@ import {
 
 export default function AdminOverviewPage() {
   const [metrics, setMetrics] = useState<AdminOverviewMetrics>({
-    total_doctors: 3,
-    total_officers: 2,
-    total_students: 7,
-    recent_actions_count: 4,
+    total_doctors: 0,
+    total_officers: 0,
+    total_students: 0,
+    recent_actions_count: 0,
   });
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [recentLogs, setRecentLogs] = useState<AdminAuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modals
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [otpModalData, setOtpModalData] = useState<{
     isOpen: boolean;
     title: string;
@@ -53,26 +57,27 @@ export default function AdminOverviewPage() {
         fetch("/api/admin/activity"),
       ]);
 
-      const staffData = await staffRes.json();
-      const studentsData = await studentsRes.json();
-      const logsData = await logsRes.json();
+      const staffData = await staffRes.json().catch(() => ({ staff: [] }));
+      const studentsData = await studentsRes.json().catch(() => ({ students: [] }));
+      const logsData = await logsRes.json().catch(() => ({ logs: [] }));
 
-      const staffList: StaffMember[] = staffData.staff || [];
-      const totalDoctors = staffList.filter(
-        (s) => s.role === "doctor" && s.status === "active"
-      ).length;
-      const totalOfficers = staffList.filter(
-        (s) => s.role === "officer" && s.status === "active"
-      ).length;
-      const studentList: AdminStudent[] = studentsData.students || [];
+      const activeStaff: StaffMember[] = (staffData.staff || []).filter(
+        (s: any) => s.status === "active"
+      );
+      const totalDoctors = activeStaff.filter((s) => s.role === "doctor").length;
+      const totalOfficers = activeStaff.filter((s) => s.role === "officer").length;
+      const studentList: AdminStudent[] = (studentsData.students || []).filter(
+        (s: any) => s.status === "active"
+      );
 
       setMetrics({
-        total_doctors: totalDoctors || 3,
-        total_officers: totalOfficers || 2,
-        total_students: studentList.length || 7,
+        total_doctors: totalDoctors,
+        total_officers: totalOfficers,
+        total_students: studentList.length,
         recent_actions_count: (logsData.logs || []).length,
       });
 
+      setStaffList(activeStaff);
       setRecentLogs((logsData.logs || []).slice(0, 10));
     } catch (e) {
       console.warn("Failed to load admin overview data:", e);
@@ -99,7 +104,7 @@ export default function AdminOverviewPage() {
         identifier: data.staff.email,
         identifierLabel: "Email / Username",
         temporaryPassword: data.temporaryPassword,
-        roleOrNote: `${data.staff.role.toUpperCase()} • Account Active`,
+        roleOrNote: `${data.staff.role.toUpperCase()} • 5-Digit PIN Assigned`,
       });
     }
   };
@@ -125,7 +130,7 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="w-full max-w-[1200px] mx-auto space-y-6">
-      {/* Compact Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
         <div>
           <h1 className="text-[20px] font-semibold text-[var(--text)] leading-tight">
@@ -136,7 +141,7 @@ export default function AdminOverviewPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-3 self-start sm:self-auto shrink-0 flex-wrap">
           <DateTimeWidget variant="compact" />
 
           <Link
@@ -156,6 +161,14 @@ export default function AdminOverviewPage() {
 
           <button
             type="button"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="h-[32px] px-3 rounded-[6px] border border-[var(--border)] bg-[var(--bg)] text-[13px] font-medium text-[var(--text)] hover:bg-[var(--bg-hover)] transition-colors inline-flex items-center justify-center cursor-pointer"
+          >
+            Bulk Import (Excel / PDF)
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsStudentModalOpen(true)}
             className="h-[32px] px-3 rounded-[6px] bg-[var(--text)] text-[var(--bg)] text-[13px] font-medium hover:opacity-90 transition-opacity inline-flex items-center justify-center cursor-pointer"
           >
@@ -167,38 +180,50 @@ export default function AdminOverviewPage() {
       {/* Stats Strip: 3 metrics in one horizontal panel */}
       <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg)] grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
         <div className="p-5 flex flex-col justify-center">
-          <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
-            {metrics.total_doctors}
-          </div>
+          {loading ? (
+            <SkeletonLoader width={48} height={28} />
+          ) : (
+            <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
+              {metrics.total_doctors}
+            </div>
+          )}
           <div className="text-[12px] text-[var(--text-muted)] mt-1.5 leading-tight">
             Doctors provisioned
           </div>
         </div>
 
         <div className="p-5 flex flex-col justify-center">
-          <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
-            {metrics.total_officers}
-          </div>
+          {loading ? (
+            <SkeletonLoader width={48} height={28} />
+          ) : (
+            <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
+              {metrics.total_officers}
+            </div>
+          )}
           <div className="text-[12px] text-[var(--text-muted)] mt-1.5 leading-tight">
             Health officers active
           </div>
         </div>
 
         <div className="p-5 flex flex-col justify-center">
-          <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
-            {metrics.total_students}
-          </div>
+          {loading ? (
+            <SkeletonLoader width={48} height={28} />
+          ) : (
+            <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
+              {metrics.total_students}
+            </div>
+          )}
           <div className="text-[12px] text-[var(--text-muted)] mt-1.5 leading-tight">
             Students enrolled
           </div>
         </div>
       </div>
 
-      {/* Clinical OPD Staff Consultations & Patients Checked */}
+      {/* Clinical OPD Staff Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[14px] font-semibold text-[var(--text)]">
-            Clinical staff OPD patients checked
+            Clinical staff roster
           </h2>
           <Link
             href="/admin/staff"
@@ -208,87 +233,64 @@ export default function AdminOverviewPage() {
           </Link>
         </div>
 
-        <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
-          <table className="w-full text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-[12px] text-[var(--text-muted)]">
-                <th className="py-2.5 px-4 font-normal">Doctor / officer name</th>
-                <th className="py-2.5 px-4 font-normal">Role</th>
-                <th className="py-2.5 px-4 font-normal">Patients checked / consults</th>
-                <th className="py-2.5 px-4 font-normal">Status</th>
-                <th className="py-2.5 px-4 font-normal text-right">Access PIN</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)]">
-              <tr className="h-[44px] hover:bg-[var(--bg-hover)] transition-colors">
-                <td className="py-2.5 px-4 font-medium text-[var(--text)]">
-                  Dr. Alok Verma (OPD Clinic)
-                </td>
-                <td className="py-2.5 px-4 text-[var(--text-muted)]">
-                  Doctor
-                </td>
-                <td className="py-2.5 px-4 text-[var(--text)] tabular-nums">
-                  14 patients checked today
-                </td>
-                <td className="py-2.5 px-4">
-                  <StatusDot status="active" label="Active OPD" />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <Link
-                    href="/admin/access"
-                    className="text-[13px] text-[var(--text)] hover:underline font-medium"
-                  >
-                    Manage PIN &rarr;
-                  </Link>
-                </td>
-              </tr>
-              <tr className="h-[44px] hover:bg-[var(--bg-hover)] transition-colors">
-                <td className="py-2.5 px-4 font-medium text-[var(--text)]">
-                  Dr. Preeti Saxena
-                </td>
-                <td className="py-2.5 px-4 text-[var(--text-muted)]">
-                  Doctor
-                </td>
-                <td className="py-2.5 px-4 text-[var(--text)] tabular-nums">
-                  9 patients checked today
-                </td>
-                <td className="py-2.5 px-4">
-                  <StatusDot status="active" label="Active OPD" />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <Link
-                    href="/admin/access"
-                    className="text-[13px] text-[var(--text)] hover:underline font-medium"
-                  >
-                    Manage PIN &rarr;
-                  </Link>
-                </td>
-              </tr>
-              <tr className="h-[44px] hover:bg-[var(--bg-hover)] transition-colors">
-                <td className="py-2.5 px-4 font-medium text-[var(--text)]">
-                  Health Officer Sharma
-                </td>
-                <td className="py-2.5 px-4 text-[var(--text-muted)]">
-                  Officer
-                </td>
-                <td className="py-2.5 px-4 text-[var(--text)] tabular-nums">
-                  6 triage calls logged
-                </td>
-                <td className="py-2.5 px-4">
-                  <StatusDot status="active" label="Active triage" />
-                </td>
-                <td className="py-2.5 px-4 text-right">
-                  <Link
-                    href="/admin/access"
-                    className="text-[13px] text-[var(--text)] hover:underline font-medium"
-                  >
-                    Manage PIN &rarr;
-                  </Link>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {loading ? (
+          <div className="h-[96px] border border-[var(--border)] rounded-[8px] p-4 flex items-center justify-center">
+            <div className="flex items-center space-x-2 text-[13px] text-[var(--text-muted)]">
+              <span className="inline-block w-4 h-4 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
+              <span>Loading staff directory...</span>
+            </div>
+          </div>
+        ) : staffList.length === 0 ? (
+          <div className="h-[80px] flex flex-col items-center justify-center text-[13px] text-[var(--text-muted)] border border-[var(--border)] rounded-[8px] bg-[var(--bg)] px-4 text-center">
+            <span>No clinical staff provisioned yet.</span>
+            <span className="text-[12px] text-[var(--text-muted)] mt-0.5">
+              Click &quot;Add Staff Member&quot; above to create Doctor or Health Officer accounts.
+            </span>
+          </div>
+        ) : (
+          <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
+            <table className="w-full text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-[var(--bg-subtle)] text-[12px] text-[var(--text-muted)]">
+                  <th className="py-2.5 px-4 font-normal">Staff Name</th>
+                  <th className="py-2.5 px-4 font-normal">Role</th>
+                  <th className="py-2.5 px-4 font-normal">Contact Phone</th>
+                  <th className="py-2.5 px-4 font-normal">Status</th>
+                  <th className="py-2.5 px-4 font-normal text-right">Access PIN</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {staffList.map((staff) => (
+                  <tr key={staff.id} className="h-[44px] hover:bg-[var(--bg-hover)] transition-colors">
+                    <td className="py-2.5 px-4 font-medium text-[var(--text)]">
+                      {staff.name}
+                    </td>
+                    <td className="py-2.5 px-4 text-[var(--text-muted)] capitalize">
+                      {staff.role}
+                    </td>
+                    <td className="py-2.5 px-4 text-[var(--text)] font-mono text-[12px] tabular-nums">
+                      {staff.phone || "—"}
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <StatusDot
+                        status={staff.status || "active"}
+                        label={staff.role === "doctor" ? "Active OPD" : "Active triage"}
+                      />
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      <Link
+                        href="/admin/access"
+                        className="text-[13px] text-[var(--text)] hover:underline font-medium"
+                      >
+                        Manage PIN &rarr;
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Recent Activity Section */}
@@ -305,7 +307,14 @@ export default function AdminOverviewPage() {
           </Link>
         </div>
 
-        {recentLogs.length === 0 ? (
+        {loading ? (
+          <div className="h-[64px] border border-[var(--border)] rounded-[8px] p-4 flex items-center justify-center">
+            <div className="flex items-center space-x-2 text-[13px] text-[var(--text-muted)]">
+              <span className="inline-block w-4 h-4 border-2 border-[var(--border)] border-t-[var(--text)] rounded-full animate-spin" />
+              <span>Loading recent activity...</span>
+            </div>
+          </div>
+        ) : recentLogs.length === 0 ? (
           <div className="h-[64px] flex items-center justify-center text-[13px] text-[var(--text-muted)] border border-[var(--border)] rounded-[8px] bg-[var(--bg)]">
             No administrative events recorded yet.
           </div>
@@ -361,6 +370,12 @@ export default function AdminOverviewPage() {
         isOpen={isStudentModalOpen}
         onClose={() => setIsStudentModalOpen(false)}
         onSuccess={(student, temporaryPassword) => handleStudentCreated({ student, temporaryPassword })}
+      />
+
+      <BulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onSuccess={() => loadData()}
       />
 
       <OneTimePasswordModal
