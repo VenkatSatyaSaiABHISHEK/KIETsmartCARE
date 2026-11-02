@@ -117,12 +117,13 @@ export default function StudentManagementPage() {
     });
   };
 
-  const filteredStudents = students.filter((s) => {
-    const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.roll_number.toLowerCase().includes(search.toLowerCase());
-    const matchBranch = branchFilter === "all" || s.branch === branchFilter;
-    const matchYear = yearFilter === "all" || s.year.toString() === yearFilter;
+  const filteredStudents = (students || []).filter((s) => {
+    const studentName = (s?.name || "").toLowerCase();
+    const roll = (s?.roll_number || "").toLowerCase();
+    const query = (search || "").toLowerCase().trim();
+    const matchSearch = !query || studentName.includes(query) || roll.includes(query);
+    const matchBranch = branchFilter === "all" || s?.branch === branchFilter;
+    const matchYear = yearFilter === "all" || (s?.year !== undefined && s.year.toString() === yearFilter);
     return matchSearch && matchBranch && matchYear;
   });
 

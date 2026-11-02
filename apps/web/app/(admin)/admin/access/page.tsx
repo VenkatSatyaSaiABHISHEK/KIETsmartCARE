@@ -197,11 +197,12 @@ export default function ManageAccessPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const filteredCredentials = credentials.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCredentials = (credentials || []).filter((c) => {
+    const credName = (c?.name || "").toLowerCase();
+    const credRole = (c?.role || "").toLowerCase();
+    const query = (searchQuery || "").toLowerCase().trim();
+    return !query || credName.includes(query) || credRole.includes(query);
+  });
 
   return (
     <div className="p-8 space-y-8 max-w-6xl">

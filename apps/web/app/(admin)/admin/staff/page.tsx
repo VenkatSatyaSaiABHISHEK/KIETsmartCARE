@@ -139,11 +139,12 @@ export default function StaffManagementPage() {
     });
   };
 
-  const filteredStaff = staff.filter((s) => {
-    const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase());
-    const matchRole = roleFilter === "all" || s.role === roleFilter;
+  const filteredStaff = (staff || []).filter((s) => {
+    const staffName = (s?.name || (s as any)?.full_name || "").toLowerCase();
+    const staffEmail = (s?.email || "").toLowerCase();
+    const query = (search || "").toLowerCase().trim();
+    const matchSearch = !query || staffName.includes(query) || staffEmail.includes(query);
+    const matchRole = roleFilter === "all" || s?.role === roleFilter;
     return matchSearch && matchRole;
   });
 
@@ -219,8 +220,10 @@ export default function StaffManagementPage() {
             ) : (
               filteredStaff.map((s) => (
                 <tr key={s.id} className="h-12 hover:bg-[#FAFAFA] transition-colors">
-                  <td className="py-3 px-4 font-medium text-[#09090B]">{s.name}</td>
-                  <td className="py-3 px-4 font-mono text-[#71717A]">{s.email}</td>
+                  <td className="py-3 px-4 font-medium text-[#09090B]">
+                    {s.name || (s as any).full_name || "—"}
+                  </td>
+                  <td className="py-3 px-4 font-mono text-[#71717A]">{s.email || "—"}</td>
                   <td className="py-3 px-4 uppercase text-2xs font-semibold text-[#09090B]">
                     {s.role}
                   </td>
@@ -228,11 +231,11 @@ export default function StaffManagementPage() {
                     {s.status === "active" ? "Active" : "Inactive"}
                   </td>
                   <td className="py-3 px-4 text-[#71717A]">
-                    {new Date(s.created_at).toLocaleDateString("en-US", {
+                    {s.created_at ? new Date(s.created_at).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",
-                    })}
+                    }) : "—"}
                   </td>
                   <td className="py-3 px-4 text-right space-x-3">
                     <button

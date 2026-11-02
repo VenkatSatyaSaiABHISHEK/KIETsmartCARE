@@ -181,7 +181,7 @@ export default function AdminOverviewPage() {
       <div className="rounded-[8px] border border-[var(--border)] bg-[var(--bg)] grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[var(--border)]">
         <div className="p-5 flex flex-col justify-center">
           {loading ? (
-            <SkeletonLoader width={48} height={28} />
+            <SkeletonLoader className="w-12 h-7 rounded" />
           ) : (
             <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
               {metrics.total_doctors}
@@ -194,7 +194,7 @@ export default function AdminOverviewPage() {
 
         <div className="p-5 flex flex-col justify-center">
           {loading ? (
-            <SkeletonLoader width={48} height={28} />
+            <SkeletonLoader className="w-12 h-7 rounded" />
           ) : (
             <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
               {metrics.total_officers}
@@ -207,7 +207,7 @@ export default function AdminOverviewPage() {
 
         <div className="p-5 flex flex-col justify-center">
           {loading ? (
-            <SkeletonLoader width={48} height={28} />
+            <SkeletonLoader className="w-12 h-7 rounded" />
           ) : (
             <div className="text-[24px] font-semibold text-[var(--text)] tabular-nums leading-none">
               {metrics.total_students}

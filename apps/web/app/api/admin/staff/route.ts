@@ -16,7 +16,13 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return NextResponse.json({ staff: staff || [] });
+    const normalizedStaff = (staff || []).map((s: any) => ({
+      ...s,
+      name: s.full_name || s.name || "Staff Member",
+      email: s.email || "",
+      phone: s.phone || "",
+    }));
+    return NextResponse.json({ staff: normalizedStaff });
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "Failed to fetch staff" },
