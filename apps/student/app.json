@@ -44,6 +44,15 @@
         }
       ],
       "expo-asset"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "3681ec42-cb7d-40b1-868d-0ffc8b05fae1"
+      }
+    },
+    "owner": "indu1987"
   }
 }

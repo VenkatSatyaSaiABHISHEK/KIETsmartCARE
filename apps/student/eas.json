@@ -1,0 +1,35 @@
+{
+  "cli": {
+    "version": ">= 27.2.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://kfvquhtylkhzenuvdmdz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_S6_GmfD-rUY09VRa-JZuFA_LBfp1KiT",
+        "EXPO_PUBLIC_API_URL": "https://kiet-smart-care.vercel.app"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://kfvquhtylkhzenuvdmdz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_S6_GmfD-rUY09VRa-JZuFA_LBfp1KiT",
+        "EXPO_PUBLIC_API_URL": "https://kiet-smart-care.vercel.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
