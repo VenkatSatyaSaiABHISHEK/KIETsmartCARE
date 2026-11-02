@@ -1,0 +1,906 @@
+/* KIET Smart Care - Interactive Educational Demo Stylesheet */
+:root {
+  --bg-primary: #0b0f19;
+  --bg-secondary: #111827;
+  --bg-card: #1f2937;
+  --bg-card-hover: #374151;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-active: #0ea5e9;
+  
+  --text-main: #f9fafb;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
+  
+  --accent-cyan: #06b6d4;
+  --accent-blue: #3b82f6;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-purple: #8b5cf6;
+  
+  --portal-bg: #f8fafc;
+  --portal-text: #0f172a;
+  --portal-border: #e2e8f0;
+  --portal-card: #ffffff;
+  --portal-muted: #64748b;
+  
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  --shadow-spotlight: 0 0 0 9999px rgba(11, 15, 25, 0.75), 0 0 25px rgba(6, 182, 212, 0.8);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* Header & Top Bar */
+.demo-header {
+  background: rgba(17, 24, 39, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-badge {
+  background: linear-gradient(135deg, #0284c7, #0d9488);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.brand-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+.brand-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Persona Switcher Tabs */
+.tabs-container {
+  display: flex;
+  background: rgba(31, 41, 55, 0.6);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  gap: 4px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+}
+
+.tab-btn .badge {
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Teaching Bar / Tour Controls */
+.tour-bar {
+  background: linear-gradient(90deg, #1e293b, #0f172a);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tour-progress-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-counter {
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  color: var(--accent-cyan);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.step-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-ctrl {
+  background: #334155;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-ctrl:hover:not(:disabled) {
+  background: #475569;
+}
+
+.btn-ctrl:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-ctrl.btn-primary {
+  background: var(--accent-cyan);
+  color: #0b0f19;
+  font-weight: 600;
+  border: none;
+}
+
+.btn-ctrl.btn-primary:hover {
+  background: #22d3ee;
+}
+
+/* Main Display Canvas */
+.demo-viewport {
+  flex: 1;
+  padding: 30px 24px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+  max-width: 1500px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Teaching Overlay / Spotlight Card */
+.pedagogy-overlay {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 380px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  z-index: 999;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pedagogy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-cyan);
+  margin-bottom: 8px;
+}
+
+.pedagogy-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+  line-height: 1.3;
+}
+
+.pedagogy-what {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.pedagogy-why {
+  background: rgba(30, 41, 59, 0.7);
+  border-left: 3px solid var(--accent-emerald);
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.pedagogy-why strong {
+  color: var(--accent-emerald);
+}
+
+.pedagogy-action-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #0284c7, #0d9488);
+  border: none;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pedagogy-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+}
+
+/* Interactive Spotlight Highlight Effect */
+.spotlight-active {
+  position: relative !important;
+  z-index: 50 !important;
+  outline: 3px solid var(--accent-cyan) !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.8) !important;
+  animation: pulseSpotlight 1.8s infinite alternate !important;
+}
+
+@keyframes pulseSpotlight {
+  0% {
+    outline-color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+  }
+  100% {
+    outline-color: #38bdf8;
+    box-shadow: 0 0 30px rgba(56, 189, 248, 1);
+  }
+}
+
+/* ========================================================
+   MOCKUP FRAME: Doctor & Officer Web Browser
+   ======================================================== */
+.browser-frame {
+  width: 100%;
+  max-width: 1280px;
+  background: var(--portal-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: none;
+}
+
+.browser-frame.active-view {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.99); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.browser-topbar {
+  background: #1e293b;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.window-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.dot.red { background: #ef4444; }
+.dot.yellow { background: #eab308; }
+.dot.green { background: #22c55e; }
+
+.address-bar {
+  flex: 1;
+  background: #0f172a;
+  color: #94a3b8;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.portal-container {
+  color: var(--portal-text);
+  padding: 24px;
+  min-height: 680px;
+}
+
+/* Portal Components */
+.portal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--portal-border);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.portal-title-area h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.portal-title-area p {
+  font-size: 13px;
+  color: var(--portal-muted);
+  margin-top: 2px;
+}
+
+.doctor-badge-online {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #166534;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+}
+
+/* Doctor Clinic Specifics */
+.doctor-workspace {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+
+.student-search-panel {
+  background: #fff;
+  border: 1px solid var(--portal-border);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.search-input-box {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-input-box input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  font-family: monospace;
+  text-transform: uppercase;
+}
+
+.student-card {
+  background: #f8fafc;
+  border: 1px solid var(--portal-border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.student-card.selected {
+  border-color: #0284c7;
+  background: #f0f9ff;
+}
+
+.student-card-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.student-card-roll {
+  font-family: monospace;
+  font-size: 12px;
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.student-card-details {
+  font-size: 12px;
+  color: var(--portal-muted);
+  margin-top: 4px;
+}
+
+.clinical-consult-panel {
+  background: #fff;
+  border: 1px solid var(--portal-border);
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.allergy-banner-danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.allergy-badge {
+  background: #fee2e2;
+  color: #dc2626;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.medication-rx-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+
+.medication-rx-table th {
+  text-align: left;
+  padding: 10px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--portal-border);
+  color: var(--portal-muted);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.medication-rx-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.rx-med-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.rx-timing-pill {
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.submit-rx-btn {
+  background: #0f172a;
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+
+.submit-rx-btn:hover {
+  background: #1e293b;
+}
+
+/* Officer Portal Specifics */
+.officer-metrics-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.metric-box {
+  background: #fff;
+  border: 1px solid var(--portal-border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--portal-muted);
+  font-weight: 500;
+}
+
+.metric-num {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: #0f172a;
+}
+
+.metric-box.alert-red .metric-num {
+  color: #ef4444;
+}
+
+.metric-box.active-blue .metric-num {
+  color: #0284c7;
+}
+
+.alert-queue-table {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--portal-border);
+  border-radius: 10px;
+  overflow: hidden;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.alert-queue-table th {
+  padding: 12px 16px;
+  background: #f8fafc;
+  color: var(--portal-muted);
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid var(--portal-border);
+}
+
+.alert-queue-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.severity-pill-red {
+  background: #fee2e2;
+  color: #b91c1c;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.btn-resolve-call {
+  background: #0284c7;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ========================================================
+   STUDENT MOBILE APP 3-FRAME SHOWCASE
+   ======================================================== */
+.mobile-showcase-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 32px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.phone-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.phone-label-badge {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--accent-cyan);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phone-mockup {
+  width: 320px;
+  height: 640px;
+  background: #000;
+  border-radius: 44px;
+  border: 10px solid #1e293b;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.phone-screen {
+  flex: 1;
+  background: #090d16;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Phone Status Bar */
+.phone-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 4px 6px 12px 6px;
+}
+
+.dynamic-island {
+  width: 90px;
+  height: 22px;
+  background: #000;
+  border-radius: 12px;
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+
+.offline-pill {
+  background: #f59e0b;
+  color: #000;
+  font-weight: 700;
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Phone 1: Schedule */
+.med-card-mobile {
+  background: #151d2f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.med-card-mobile.active-dose {
+  border-color: #06b6d4;
+  background: linear-gradient(145deg, #16243d, #101c30);
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.2);
+}
+
+.dose-time {
+  font-size: 11px;
+  color: #38bdf8;
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.med-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.med-instr {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* Phone 2: Active Alarm Modal */
+.alarm-overlay-mobile {
+  background: linear-gradient(180deg, #1e1b4b, #0f172a);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #6366f1;
+  text-align: center;
+  margin-top: 20px;
+  animation: pulseAlarm 1.5s infinite alternate;
+}
+
+@keyframes pulseAlarm {
+  0% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
+  100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.8); }
+}
+
+.alarm-bell-icon {
+  font-size: 38px;
+  margin-bottom: 8px;
+  animation: ringBell 0.8s infinite;
+}
+
+@keyframes ringBell {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(15deg); }
+  75% { transform: rotate(-15deg); }
+}
+
+.btn-take-dose {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  margin-top: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Phone 3: Helplines */
+.helpline-box {
+  background: #182235;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.helpline-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.helpline-role {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.btn-call-emergency {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1100px) {
+  .doctor-workspace {
+    grid-template-columns: 1fr;
+  }
+  .officer-metrics-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pedagogy-overlay {
+    width: calc(100vw - 48px);
+    bottom: 12px;
+    right: 24px;
+    left: 24px;
+  }
+}
