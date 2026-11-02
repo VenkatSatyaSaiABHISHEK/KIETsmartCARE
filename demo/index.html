@@ -3,446 +3,515 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KIET Smart Care • Interactive Educational & System Demo</title>
+  <title>KIET Smart Care • Real-Time Campus Healthcare Operating System</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Top Header Navigation -->
-  <header class="demo-header">
-    <div class="brand-section">
-      <div class="brand-badge">
-        <span>⚡</span> KIET SMART CARE
+  <!-- Ambient Cinematic Background Lighting -->
+  <div class="ambient-canvas">
+    <div class="ambient-blob-1"></div>
+    <div class="ambient-blob-2"></div>
+    <div class="ambient-grid"></div>
+  </div>
+
+  <!-- ========================================================
+       1. CINEMATIC INTRO / PRELOADER CURTAIN
+       ======================================================== -->
+  <div class="intro-curtain" id="introCurtain">
+    <div class="intro-content">
+      <div class="intro-emblem">⚡</div>
+      <div class="intro-badge">
+        <span class="status-dot-pulse"></span> SYSTEM VERIFIED &bull; ENTERPRISE DEPLOYMENT
       </div>
-      <div>
-        <div class="brand-title">Interactive Classroom Architecture & Workflow Demo</div>
-        <div class="brand-subtitle">Teaching Clinical Prescribing, Surveillance, & Offline Student Protection</div>
+      <h1 class="intro-title">KIET Smart Care</h1>
+      <p class="intro-desc">
+        Next-generation closed-loop campus healthcare architecture. Teaching how institutional doctor prescribing, hostel surveillance, and hardware-level offline student alarms operate in harmony.
+      </p>
+
+      <button class="intro-launch-btn" id="launchDemoBtn">
+        <span>▶</span> Launch Fullscreen Experience
+      </button>
+
+      <div class="intro-telemetry">
+        <div class="telemetry-item">
+          <span class="status-dot-pulse"></span> Supabase Database: Connected
+        </div>
+        <div class="telemetry-item">
+          <span class="status-dot-pulse"></span> Offline Engine: Hardware Verified
+        </div>
+        <div class="telemetry-item">
+          <span class="status-dot-pulse"></span> Campus Hostels: 14 Active
+        </div>
       </div>
     </div>
+  </div>
 
-    <!-- 3 Persona Navigation Tabs -->
-    <div class="tabs-container">
-      <button class="tab-btn active" data-view="doctor">
-        <span>🩺</span> Doctor OPD Clinic
-        <span class="badge">Web Portal</span>
+  <!-- ========================================================
+       2. TOP DYNAMIC ISLAND CONTROL DOCK
+       ======================================================== -->
+  <header class="top-island-dock">
+    <div class="dock-identity" id="homeLogoBtn">
+      <div class="dock-logo-pill">⚡</div>
+      <span class="dock-title">KIET Smart Care OS</span>
+      <span class="dock-badge">v2.4 LIVE</span>
+    </div>
+
+    <div class="dock-divider"></div>
+
+    <!-- 3 Persona Segmented Tabs -->
+    <nav class="dock-nav-pills">
+      <button class="dock-tab active" data-view="doctor">
+        <span>🩺</span> OPD Clinic Desk
       </button>
-      <button class="tab-btn" data-view="officer">
-        <span>🛡️</span> Health Officer
-        <span class="badge">Surveillance</span>
+      <button class="dock-tab" data-view="officer">
+        <span>🛡️</span> Triage Command HQ
       </button>
-      <button class="tab-btn" data-view="student">
-        <span>📱</span> Student Experience
-        <span class="badge">3-Device Mobile</span>
+      <button class="dock-tab" data-view="student">
+        <span>📱</span> Student Offline Engine
+      </button>
+    </nav>
+
+    <div class="dock-divider"></div>
+
+    <div class="dock-utility-btns">
+      <button class="util-icon-btn" id="fullscreenToggleBtn" title="Toggle Fullscreen">
+        ⛶
+      </button>
+      <button class="util-icon-btn" id="restartTourBtn" title="Restart Guided Tour">
+        🔄
       </button>
     </div>
   </header>
 
-  <!-- Interactive Presentation / Teaching Bar -->
-  <section class="tour-bar">
-    <div class="tour-progress-info">
-      <span class="step-counter" id="stepCounterBadge">STEP 1 OF 4</span>
-      <span class="step-label" id="stepHeadlineText">Doctor Student Lookup & Identification</span>
-    </div>
-
-    <div class="tour-actions">
-      <button class="btn-ctrl" id="prevStepBtn" disabled>
-        <span>&larr;</span> Previous Step
-      </button>
-      <button class="btn-ctrl btn-primary" id="nextStepBtn">
-        Next Step <span>&rarr;</span>
-      </button>
-      <button class="btn-ctrl" id="restartTourBtn">
-        <span>🔄</span> Reset
-      </button>
-    </div>
-  </section>
-
-  <!-- Main Presentation Canvas -->
-  <main class="demo-viewport">
+  <!-- ========================================================
+       3. FULLSCREEN DISPLAY CANVAS (100% IMMERSIVE)
+       ======================================================== -->
+  <main class="fullscreen-stage">
 
     <!-- ========================================================
-         VIEW 1: DOCTOR OPD PORTAL MOCKUP
+         STAGE 1: DOCTOR OPD CLINICAL WORKSTATION
          ======================================================== -->
-    <div class="browser-frame active-view" id="doctorView">
-      <div class="browser-topbar">
-        <div class="window-dots">
-          <div class="dot red"></div>
-          <div class="dot yellow"></div>
-          <div class="dot green"></div>
-        </div>
-        <div class="address-bar">
-          <span>🔒</span> https://kiet-smart-care.vercel.app/doctor (KIET Institutional Dispensary)
-        </div>
-      </div>
-
-      <div class="portal-container">
-        <!-- Portal Header -->
-        <div class="portal-header">
-          <div class="portal-title-area">
-            <h2>OPD Clinical Consultation Desk</h2>
-            <p>Dr. Alok Verma, MD &bull; Campus Health Center &bull; Active Shift</p>
+    <div class="stage-viewport active" id="doctorViewport">
+      <div class="workstation-container">
+        <!-- Workstation Header -->
+        <div class="workstation-header">
+          <div class="doc-info-block">
+            <div class="doc-avatar">👨‍⚕️</div>
+            <div>
+              <div class="doc-title-h1">OPD Clinical Consultation Desk</div>
+              <div class="doc-subtitle-p">Dr. Alok Verma, MD &bull; Central Campus Clinic &bull; Institutional OPD Shift</div>
+            </div>
           </div>
-          <div class="doctor-badge-online">
-            <div class="pulse-dot"></div> Doctor OPD Active
+          <div class="doc-live-badge">
+            <span class="status-dot-pulse"></span> Doctor Consultation Active
           </div>
         </div>
 
-        <div class="doctor-workspace">
-          <!-- Left: Student Lookup Panel -->
-          <div class="student-search-panel" id="docSpotlightSearch">
-            <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; display: block;">
-              Student Roll Number Search
-            </label>
-            <div class="search-input-box">
+        <!-- Workstation Body -->
+        <div class="workstation-body">
+          <!-- Left: Realtime Student Roll Search & Queue -->
+          <aside class="workstation-sidebar" id="spotlightDocSearch">
+            <div class="sidebar-heading">Student Identification &amp; Queue</div>
+            <div class="roll-search-box">
               <span>🔍</span>
-              <input type="text" id="demoRollInput" value="24AB012001" readonly>
+              <input type="text" id="demoRollSearchInput" value="24AB012001" readonly>
             </div>
 
-            <div class="student-card selected" id="docSpotlightCard">
-              <div class="student-card-name">Aarav Sharma</div>
-              <div class="student-card-roll">24AB012001 &bull; B.Tech CSE (Year 2)</div>
-              <div class="student-card-details">Hostel: Tagore Bhavan (Room 304)</div>
-            </div>
+            <div class="student-list-queue">
+              <div class="student-queue-card selected" id="spotlightDocSelectedCard">
+                <div class="student-queue-name">Aarav Sharma</div>
+                <div class="student-queue-roll">24AB012001 &bull; B.Tech CSE (Year 2)</div>
+                <div class="student-queue-meta">Tagore Bhavan &bull; Room 304 &bull; Vitals High</div>
+              </div>
 
-            <div class="student-card" style="opacity: 0.6;">
-              <div class="student-card-name">Sneha Patel</div>
-              <div class="student-card-roll">24EC012015 &bull; B.Tech ECE (Year 1)</div>
-              <div class="student-card-details">Hostel: Sarojini Bhavan (Room 112)</div>
-            </div>
-          </div>
+              <div class="student-queue-card" style="opacity: 0.5;">
+                <div class="student-queue-name">Sneha Patel</div>
+                <div class="student-queue-roll">24EC012015 &bull; B.Tech ECE (Year 1)</div>
+                <div class="student-queue-meta">Sarojini Bhavan &bull; Room 112</div>
+              </div>
 
-          <!-- Right: Clinical Consultation Area -->
-          <div class="clinical-consult-panel">
-            <!-- Allergy Invariant Banner -->
-            <div class="allergy-banner-danger" id="docSpotlightAllergy">
+              <div class="student-queue-card" style="opacity: 0.5;">
+                <div class="student-queue-name">Rohan Verma</div>
+                <div class="student-queue-roll">2300290130088 &bull; B.Tech ME (Year 3)</div>
+                <div class="student-queue-meta">Tagore Bhavan &bull; Room 204</div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Right: Active Consultation & Prescription Desk -->
+          <section class="workstation-main">
+            <!-- Patient Banner with Live Vitals -->
+            <div class="patient-profile-strip">
               <div>
-                <strong>⚠️ DOCUMENTED CRITICAL DRUG ALLERGY DETECTED:</strong>
-                <div style="font-size: 12px; margin-top: 2px;">
-                  Student has severe anaphylactic reaction to <strong>Penicillin & Amoxicillin</strong>.
+                <div style="font-size: 16px; font-weight: 800; color: #0f172a;">Aarav Sharma</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                  Male &bull; 19 Yrs &bull; Hosteller &bull; Emergency Contact: +91 98480 11223 (Father)
                 </div>
               </div>
-              <span class="allergy-badge">ALLERGY SAFETY LOCK</span>
-            </div>
-
-            <!-- Problem / Chief Complaint -->
-            <div style="margin-bottom: 16px;">
-              <label style="font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">
-                Clinical Problem Category
-              </label>
-              <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; border-radius: 6px; font-weight: 600; font-size: 13px;">
-                Acute Viral Fever & Upper Respiratory Tract Infection (101.4°F)
+              <div class="patient-vitals-grid">
+                <div class="vital-metric">
+                  <div class="vital-label">Body Temp</div>
+                  <div class="vital-value" style="color: #dc2626;">101.4°F</div>
+                </div>
+                <div class="vital-metric">
+                  <div class="vital-label">Pulse</div>
+                  <div class="vital-value">88 bpm</div>
+                </div>
+                <div class="vital-metric">
+                  <div class="vital-label">Blood Pressure</div>
+                  <div class="vital-value">120/80</div>
+                </div>
               </div>
             </div>
 
-            <!-- Prescription Items -->
-            <div id="docSpotlightPrescription">
-              <label style="font-size: 12px; font-weight: 600; color: #475569; display: block; margin-bottom: 6px;">
-                Clinic Formulary Prescription (Direct To Student Phone)
+            <!-- Danger Allergy Shield -->
+            <div class="allergy-invariant-shield" id="spotlightDocAllergy">
+              <div class="allergy-shield-left">
+                <div class="allergy-icon">⚠️</div>
+                <div>
+                  <div class="allergy-title">CRITICAL DRUG ALLERGY INVARIANT ACTIVE</div>
+                  <div class="allergy-desc">Student has documented anaphylaxis to <strong>Penicillin &amp; Amoxicillin</strong>. Formulary locked.</div>
+                </div>
+              </div>
+              <div class="allergy-lock-pill">ALLERGY LOCK ACTIVE</div>
+            </div>
+
+            <!-- Problem / Diagnosis Category -->
+            <div style="margin-bottom: 20px;">
+              <label style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; display: block;">
+                Chief Clinical Diagnosis
+              </label>
+              <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 12px 18px; border-radius: 10px; font-weight: 700; font-size: 14px; color: #0f172a;">
+                Acute Viral Pyrexia &bull; Upper Respiratory Tract Infection (URTI)
+              </div>
+            </div>
+
+            <!-- Prescribed Formulary Items -->
+            <div id="spotlightDocRx">
+              <label style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; display: block;">
+                Prescribed Campus Formulary (Auto-Synchronizes To Mobile Alarm Engine)
               </label>
 
-              <table class="medication-rx-table">
+              <table class="formulary-rx-table">
                 <thead>
                   <tr>
                     <th>Medication Name</th>
                     <th>Dosage</th>
-                    <th>Frequency / Meal Timing</th>
+                    <th>Meal Synchronization Timing</th>
                     <th>Duration</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td class="rx-med-name">Paracetamol 650mg</td>
+                    <td><strong>Paracetamol 650mg</strong></td>
                     <td>1 Tablet</td>
-                    <td><span class="rx-timing-pill">Post-Breakfast &bull; Post-Dinner</span></td>
+                    <td><span class="timing-pill-tag">Post-Breakfast (8:30 AM) &bull; Post-Dinner (8:30 PM)</span></td>
                     <td>3 Days</td>
                   </tr>
                   <tr>
-                    <td class="rx-med-name">Pantoprazole 40mg</td>
+                    <td><strong>Pantoprazole 40mg</strong></td>
                     <td>1 Capsule</td>
-                    <td><span class="rx-timing-pill">Empty Stomach (Pre-Breakfast)</span></td>
+                    <td><span class="timing-pill-tag">Pre-Breakfast (Empty Stomach 8:00 AM)</span></td>
                     <td>3 Days</td>
                   </tr>
                   <tr>
-                    <td class="rx-med-name">Cetirizine 10mg</td>
+                    <td><strong>Cetirizine 10mg</strong></td>
                     <td>1 Tablet</td>
-                    <td><span class="rx-timing-pill">Bedtime Only</span></td>
+                    <td><span class="timing-pill-tag">Bedtime (10:00 PM)</span></td>
                     <td>3 Days</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; margin-top: 20px;" id="docSpotlightSubmit">
-              <button class="submit-rx-btn" id="simulateSubmitBtn">
-                <span>🔒</span> Submit Consultation & Sync To Student Phone
+            <div class="rx-action-bar" id="spotlightDocSubmit">
+              <button class="btn-rx-seal" id="simulateSubmitBtn">
+                <span>🔒</span> Seal Consultation &amp; Push To Aarav's Phone
               </button>
             </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================
+         STAGE 2: HEALTH OFFICER SURVEILLANCE COMMAND HQ
+         ======================================================== -->
+    <div class="stage-viewport" id="officerViewport">
+      <div class="officer-hq-container">
+        <!-- HQ Header -->
+        <div class="officer-hq-header">
+          <div>
+            <h2 style="font-size: 18px; font-weight: 800;">Campus Epidemic &amp; Health Officer Triage Command</h2>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
+              Officer Suresh Varma &bull; Student Welfare &amp; Hostels Surveillance Division &bull; KIET Ghaziabad
+            </div>
+          </div>
+          <div class="hq-radar-status">
+            <span class="status-dot-pulse"></span> SURVEILLANCE RADAR ACTIVE
+          </div>
+        </div>
+
+        <!-- HQ Body -->
+        <div class="officer-hq-body">
+          <!-- Metric Cards -->
+          <div class="telemetry-cards-grid" id="spotlightOffMetrics">
+            <div class="telemetry-card">
+              <div class="telemetry-label">Active Sick Hostellers</div>
+              <div class="telemetry-val">14</div>
+            </div>
+            <div class="telemetry-card danger">
+              <div class="telemetry-label">Red Flag Escalated Alarms</div>
+              <div class="telemetry-val">2</div>
+            </div>
+            <div class="telemetry-card">
+              <div class="telemetry-label">Doses Verified Today</div>
+              <div class="telemetry-val">38</div>
+            </div>
+            <div class="telemetry-card">
+              <div class="telemetry-label">Hostel Recovery Rate</div>
+              <div class="telemetry-val">94.8%</div>
+            </div>
+          </div>
+
+          <!-- Priority Escalation Queue -->
+          <div class="hq-table-frame" id="spotlightOffQueue">
+            <div class="hq-table-titlebar">
+              <div style="font-size: 14px; font-weight: 800;">Priority Triage &amp; Unconfirmed Dose Escalation Queue</div>
+              <div style="font-size: 12px; font-weight: 700; color: #fb7185;">⚠️ 2 Cases Require Immediate Hostel Outreach</div>
+            </div>
+
+            <table class="hq-alert-table">
+              <thead>
+                <tr>
+                  <th>Student &amp; Roll Number</th>
+                  <th>Hostel Block &amp; Room</th>
+                  <th>Prescribing Physician</th>
+                  <th>Escalation Incident Trigger</th>
+                  <th>Severity Level</th>
+                  <th>Emergency Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background: rgba(244, 63, 94, 0.05);">
+                  <td>
+                    <strong>Rohan Verma</strong>
+                    <div style="font-family: var(--font-mono); font-size: 11px; color: #94a3b8;">2300290130088</div>
+                  </td>
+                  <td>Tagore Bhavan &bull; Room 204</td>
+                  <td>Dr. Alok Verma</td>
+                  <td style="color: #fb7185; font-weight: 700;">Missed Afternoon Dose + 60m Overdue</td>
+                  <td><span class="alert-badge-red">CRITICAL ESCALATION</span></td>
+                  <td>
+                    <button class="btn-hq-call" id="spotlightOffAction">
+                      📞 Dispatch Hostel Warden
+                    </button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>Priya Nair</strong>
+                    <div style="font-family: var(--font-mono); font-size: 11px; color: #94a3b8;">2200290110054</div>
+                  </td>
+                  <td>Sarojini Bhavan &bull; Room 108</td>
+                  <td>Dr. Preeti Saxena</td>
+                  <td style="color: #f59e0b; font-weight: 700;">Recovery Check: Fever Still 101.2°F</td>
+                  <td><span class="alert-badge-red" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #fbbf24;">MONITORING NEEDED</span></td>
+                  <td>
+                    <button class="btn-hq-call" style="background: linear-gradient(135deg, #475569, #334155);">
+                      📞 Contact Hostel Nurse
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ========================================================
-         VIEW 2: HEALTH OFFICER SURVEILLANCE PORTAL MOCKUP
+         STAGE 3: STUDENT 3-DEVICE FLOATING SMARTPHONE SHOWCASE
          ======================================================== -->
-    <div class="browser-frame" id="officerView">
-      <div class="browser-topbar">
-        <div class="window-dots">
-          <div class="dot red"></div>
-          <div class="dot yellow"></div>
-          <div class="dot green"></div>
+    <div class="stage-viewport" id="studentViewport">
+      <div class="mobile-stage-grid">
+
+        <!-- Device 1: Offline Schedule -->
+        <div class="device-column" id="spotlightStudSchedule">
+          <div class="device-label-pill">1. Native Offline Alarm Engine</div>
+          <div class="smartphone-chassis">
+            <div class="island-notch"></div>
+            <div class="smartphone-screen">
+              <div class="phone-header-row">
+                <span>9:41</span>
+                <div class="badge-offline-mode">⚡ 100% OFFLINE ACTIVE</div>
+              </div>
+
+              <div style="margin: 12px 0 16px;">
+                <div style="font-size: 11px; color: #38bdf8; font-weight: 700;">Aarav Sharma &bull; 24AB012001</div>
+                <h3 style="font-size: 18px; font-weight: 800; margin-top: 2px;">Daily Dose Schedule</h3>
+              </div>
+
+              <div class="phone-med-card highlight">
+                <div style="font-size: 11px; font-weight: 700; color: #38bdf8; margin-bottom: 4px;">
+                  🔔 SCHEDULED: 1:30 PM (AFTER LUNCH)
+                </div>
+                <div style="font-size: 16px; font-weight: 800;">Paracetamol 650mg</div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Take 1 tablet with water. Do not skip.</div>
+              </div>
+
+              <div class="phone-med-card">
+                <div style="font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">
+                  🕒 SCHEDULED: 8:30 PM (AFTER DINNER)
+                </div>
+                <div style="font-size: 16px; font-weight: 800;">Cetirizine 10mg</div>
+                <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Take 1 tablet before sleeping.</div>
+              </div>
+
+              <div style="margin-top: auto; padding: 12px; background: rgba(6, 182, 212, 0.1); border-radius: 12px; border: 1px dashed rgba(6, 182, 212, 0.4); font-size: 11px; color: #38bdf8; text-align: center; line-height: 1.4;">
+                🔒 Alarms are hard-coded in native Android/iOS alarm hardware. Zero internet required to ring!
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="address-bar">
-          <span>🔒</span> https://kiet-smart-care.vercel.app/officer (Campus Health Surveillance)
+
+        <!-- Device 2: Interactive Dose Alarm Trigger -->
+        <div class="device-column" id="spotlightStudAlarm">
+          <div class="device-label-pill" style="color: #10b981; border-color: rgba(16, 185, 129, 0.3);">
+            2. Interactive Alarm &amp; Confirmation
+          </div>
+          <div class="smartphone-chassis">
+            <div class="island-notch"></div>
+            <div class="smartphone-screen">
+              <div class="phone-header-row">
+                <span>1:30 PM</span>
+                <span style="font-size: 11px; font-weight: 700; color: #10b981;">● Dose Alarm Ringing</span>
+              </div>
+
+              <div class="active-alarm-box">
+                <div class="alarm-ringing-bell">🔔</div>
+                <div style="font-size: 11px; font-weight: 800; color: #a5b4fc; letter-spacing: 0.5px;">
+                  CAMPUS HEALTH REMINDER
+                </div>
+                <div style="font-size: 18px; font-weight: 800; color: #fff; margin: 6px 0;">
+                  Time for Paracetamol 650mg
+                </div>
+                <div style="font-size: 12px; color: #cbd5e1;">Prescribed by Dr. Alok Verma for Acute Fever.</div>
+
+                <button class="btn-confirm-dose-take" id="simulateTakeDoseBtn">
+                  ✓ I HAVE TAKEN THIS DOSE
+                </button>
+                <div style="font-size: 10px; color: #94a3b8; margin-top: 10px;">
+                  Stops chime audio &amp; logs clinical adherence.
+                </div>
+              </div>
+
+              <div style="margin-top: auto; font-size: 11px; color: #64748b; text-align: center;">
+                Logs locally offline and syncs back when Wi-Fi connects.
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Device 3: Instant Helplines -->
+        <div class="device-column" id="spotlightStudHelp">
+          <div class="device-label-pill" style="color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
+            3. Instant Campus Helplines
+          </div>
+          <div class="smartphone-chassis">
+            <div class="island-notch"></div>
+            <div class="smartphone-screen">
+              <div class="phone-header-row">
+                <span>9:41</span>
+                <span>📶 5G</span>
+              </div>
+
+              <div style="margin: 12px 0 16px;">
+                <h3 style="font-size: 18px; font-weight: 800;">Campus Helplines</h3>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+                  1-Tap direct connection to campus medical responders.
+                </div>
+              </div>
+
+              <div class="helpline-dial-row">
+                <div>
+                  <div style="font-size: 13px; font-weight: 700;">KIET Central Clinic</div>
+                  <div style="font-size: 11px; color: #94a3b8;">Central Dispensary</div>
+                  <div style="font-family: var(--font-mono); font-size: 11px; color: #38bdf8; margin-top: 2px;">+91-120-2983555</div>
+                </div>
+                <button class="dial-circle-btn">📞</button>
+              </div>
+
+              <div class="helpline-dial-row">
+                <div>
+                  <div style="font-size: 13px; font-weight: 700;">Dr. Alok Verma</div>
+                  <div style="font-size: 11px; color: #94a3b8;">Attending OPD Doctor</div>
+                  <div style="font-family: var(--font-mono); font-size: 11px; color: #38bdf8; margin-top: 2px;">+91 98480 00002</div>
+                </div>
+                <button class="dial-circle-btn" style="background: #2563eb;">📞</button>
+              </div>
+
+              <div class="helpline-dial-row">
+                <div>
+                  <div style="font-size: 13px; font-weight: 700;">Officer Suresh Varma</div>
+                  <div style="font-size: 11px; color: #94a3b8;">Hostel Triage Officer</div>
+                  <div style="font-family: var(--font-mono); font-size: 11px; color: #38bdf8; margin-top: 2px;">+91 98480 00003</div>
+                </div>
+                <button class="dial-circle-btn" style="background: #0d9488;">📞</button>
+              </div>
+
+              <div style="margin-top: auto; background: #1e1b4b; padding: 12px; border-radius: 12px; border: 1px solid #4338ca; text-align: center;">
+                <div style="font-size: 11px; font-weight: 800; color: #a5b4fc;">24/7 ON-CAMPUS AMBULANCE</div>
+                <div style="font-size: 10px; color: #cbd5e1; margin-top: 2px;">Stationed at KIET Main Gate 1 for emergency hospital transfers.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
-
-      <div class="portal-container">
-        <!-- Portal Header -->
-        <div class="portal-header">
-          <div class="portal-title-area">
-            <h2>Campus Epidemic & Health Officer Surveillance Console</h2>
-            <p>Officer Suresh Varma &bull; Student Welfare &amp; Hostels Surveillance &bull; KIET Ghaziabad</p>
-          </div>
-          <div class="doctor-badge-online" style="background: #eff6ff; border-color: #bfdbfe; color: #1e40af;">
-            <div class="pulse-dot" style="background: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);"></div> Realtime Surveillance Active
-          </div>
-        </div>
-
-        <!-- Metrics Strip -->
-        <div class="officer-metrics-strip" id="offSpotlightMetrics">
-          <div class="metric-box active-blue">
-            <div class="metric-label">Active Hostellers Under Care</div>
-            <div class="metric-num">14</div>
-          </div>
-          <div class="metric-box alert-red">
-            <div class="metric-label">Red Flag Escalated Alerts</div>
-            <div class="metric-num">2</div>
-          </div>
-          <div class="metric-box">
-            <div class="metric-label">Doses Confirmed Today</div>
-            <div class="metric-num">38</div>
-          </div>
-          <div class="metric-box">
-            <div class="metric-label">Adherence Rate</div>
-            <div class="metric-num">94.8%</div>
-          </div>
-        </div>
-
-        <!-- Realtime Alarm Escalation Queue -->
-        <div style="margin-top: 10px;" id="offSpotlightQueue">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="font-size: 16px; font-weight: 700; color: #0f172a;">Priority Triage & Escalation Queue</h3>
-            <span style="font-size: 12px; color: #ef4444; font-weight: 600;">⚠️ 2 Cases Require Immediate Outreach</span>
-          </div>
-
-          <table class="alert-queue-table">
-            <thead>
-              <tr>
-                <th>Student / Roll</th>
-                <th>Hostel & Room</th>
-                <th>Prescribed Doctor</th>
-                <th>Incident Trigger</th>
-                <th>Status</th>
-                <th>Outreach Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="background: #fff5f5;">
-                <td>
-                  <strong>Rohan Verma</strong>
-                  <div style="font-family: monospace; font-size: 11px; color: #64748b;">2300290130088</div>
-                </td>
-                <td>Tagore Bhavan &bull; Room 204</td>
-                <td>Dr. Alok Verma</td>
-                <td>
-                  <span style="color: #b91c1c; font-weight: 600;">Missed Afternoon Dose + 60m Overdue</span>
-                </td>
-                <td><span class="severity-pill-red">CRITICAL ALARM</span></td>
-                <td>
-                  <button class="btn-resolve-call" id="offSpotlightAction">
-                    📞 Call Student / Warden
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td>
-                  <strong>Priya Nair</strong>
-                  <div style="font-family: monospace; font-size: 11px; color: #64748b;">2200290110054</div>
-                </td>
-                <td>Sarojini Bhavan &bull; Room 108</td>
-                <td>Dr. Preeti Saxena</td>
-                <td>
-                  <span style="color: #ea580c; font-weight: 600;">Recovery Check: Fever Still 101°F</span>
-                </td>
-                <td><span class="severity-pill-red" style="background: #ffedd5; color: #c2410c;">ATTENTION REQUIRED</span></td>
-                <td>
-                  <button class="btn-resolve-call">
-                    📞 Contact Hostel Nurse
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================================
-         VIEW 3: STUDENT MOBILE APP 3-FRAME SHOWCASE
-         ======================================================== -->
-    <div class="mobile-showcase-container" id="studentView" style="display: none;">
-
-      <!-- Phone 1: Meal Schedule & Offline Engine -->
-      <div class="phone-wrapper" id="studSpotlightSchedule">
-        <div class="phone-label-badge">
-          <span>⏰</span> 1. Offline Schedule &amp; Alarms
-        </div>
-        <div class="phone-mockup">
-          <div class="dynamic-island"></div>
-          <div class="phone-screen">
-            <div class="phone-topbar">
-              <span>9:41</span>
-              <div class="offline-pill"><span>⚡</span> OFFLINE ENGINE ACTIVE</div>
-            </div>
-
-            <div style="margin-top: 16px; margin-bottom: 14px;">
-              <div style="font-size: 11px; color: #38bdf8; font-weight: 600; text-transform: uppercase;">Aarav Sharma &bull; 24AB012001</div>
-              <h2 style="font-size: 18px; font-weight: 700;">My Prescriptions</h2>
-            </div>
-
-            <!-- Active Card -->
-            <div class="med-card-mobile active-dose">
-              <div class="dose-time">
-                <span>🔔</span> SCHEDULED: 1:30 PM (AFTER LUNCH)
-              </div>
-              <div class="med-title">Paracetamol 650mg</div>
-              <div class="med-instr">Take 1 tablet with full glass of water. Do not skip.</div>
-            </div>
-
-            <div class="med-card-mobile">
-              <div class="dose-time" style="color: #94a3b8;">
-                <span>🕒</span> SCHEDULED: 8:30 PM (AFTER DINNER)
-              </div>
-              <div class="med-title">Cetirizine 10mg</div>
-              <div class="med-instr">Take 1 tablet before sleeping.</div>
-            </div>
-
-            <div style="margin-top: auto; padding: 10px; background: rgba(6, 182, 212, 0.1); border-radius: 8px; border: 1px dashed rgba(6, 182, 212, 0.4); font-size: 11px; color: #38bdf8; text-align: center;">
-              🔒 Alarms are hard-coded in native device hardware. No internet required to ring!
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Phone 2: Interactive Dose Alarm Trigger -->
-      <div class="phone-wrapper" id="studSpotlightAlarm">
-        <div class="phone-label-badge" style="color: #10b981; border-color: rgba(16, 185, 129, 0.3);">
-          <span>💊</span> 2. Interactive Alarm &amp; Confirmation
-        </div>
-        <div class="phone-mockup">
-          <div class="dynamic-island"></div>
-          <div class="phone-screen">
-            <div class="phone-topbar">
-              <span>1:30 PM</span>
-              <span style="font-size: 10px; color: #10b981;">● Alarm Triggered</span>
-            </div>
-
-            <div class="alarm-overlay-mobile">
-              <div class="alarm-bell-icon">🔔</div>
-              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #a5b4fc; font-weight: 700;">
-                CAMPUS HEALTH REMINDER
-              </div>
-              <h3 style="font-size: 17px; font-weight: 700; margin: 6px 0; color: #fff;">Time for Paracetamol 650mg</h3>
-              <p style="font-size: 12px; color: #cbd5e1;">Prescribed by Dr. Alok Verma for Acute Fever.</p>
-
-              <button class="btn-take-dose" id="simulateTakeDoseBtn">
-                ✓ I HAVE TAKEN THIS DOSE
-              </button>
-              <div style="font-size: 10px; color: #94a3b8; margin-top: 8px;">
-                Stops reminder audio &amp; logs dose instantly.
-              </div>
-            </div>
-
-            <div style="margin-top: auto; font-size: 11px; color: #64748b; text-align: center;">
-              Syncs to Health Officer when network is restored.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Phone 3: Campus Direct Helplines -->
-      <div class="phone-wrapper" id="studSpotlightHelp">
-        <div class="phone-label-badge" style="color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
-          <span>🆘</span> 3. Campus 1-Tap Helplines
-        </div>
-        <div class="phone-mockup">
-          <div class="dynamic-island"></div>
-          <div class="phone-screen">
-            <div class="phone-topbar">
-              <span>9:41</span>
-              <span>📶 5G</span>
-            </div>
-
-            <div style="margin-top: 16px; margin-bottom: 14px;">
-              <h2 style="font-size: 18px; font-weight: 700;">Emergency Helplines</h2>
-              <p style="font-size: 11px; color: #94a3b8;">Direct 1-tap connection to campus medical staff.</p>
-            </div>
-
-            <!-- Helpline 1 -->
-            <div class="helpline-box">
-              <div>
-                <div class="helpline-name">KIET College Clinic</div>
-                <div class="helpline-role">Central Campus Dispensary</div>
-                <div style="font-family: monospace; font-size: 11px; color: #38bdf8; margin-top: 2px;">+91-120-2983555</div>
-              </div>
-              <button class="btn-call-emergency">📞</button>
-            </div>
-
-            <!-- Helpline 2 -->
-            <div class="helpline-box">
-              <div>
-                <div class="helpline-name">Dr. Alok Verma (OPD)</div>
-                <div class="helpline-role">Attending Physician Mobile</div>
-                <div style="font-family: monospace; font-size: 11px; color: #38bdf8; margin-top: 2px;">+91 98480 00002</div>
-              </div>
-              <button class="btn-call-emergency" style="background: #2563eb;">📞</button>
-            </div>
-
-            <!-- Helpline 3 -->
-            <div class="helpline-box">
-              <div>
-                <div class="helpline-name">Officer Suresh Varma</div>
-                <div class="helpline-role">Hostel Triage Officer</div>
-                <div style="font-family: monospace; font-size: 11px; color: #38bdf8; margin-top: 2px;">+91 98480 00003</div>
-              </div>
-              <button class="btn-call-emergency" style="background: #0d9488;">📞</button>
-            </div>
-
-            <div style="margin-top: auto; background: #1e1b4b; padding: 12px; border-radius: 10px; border: 1px solid #4338ca; text-align: center;">
-              <div style="font-size: 11px; font-weight: 600; color: #a5b4fc;">24/7 ON-CAMPUS AMBULANCE</div>
-              <div style="font-size: 10px; color: #cbd5e1; margin-top: 2px;">Dedicated vehicle stationed at Main Gate 1.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
 
   </main>
 
-  <!-- Floating Pedagogical Spotlight Card -->
-  <aside class="pedagogy-overlay" id="pedagogyCard">
-    <div class="pedagogy-tag" id="pedagogyTag">🩺 DOCTOR PORTAL &bull; LESSON 1</div>
-    <h3 class="pedagogy-title" id="pedagogyTitle">Student Identification & Roll Search</h3>
-    <div class="pedagogy-what" id="pedagogyWhat">
-      The doctor types the student's 10-character institutional roll number to immediately load their enrolled college identity, hostel location, and medical file.
+  <!-- ========================================================
+       4. BOTTOM CINEMATIC DIRECTOR / CONTROLLER BAR
+       ======================================================== -->
+  <footer class="bottom-director-dock">
+    <div class="director-progress-area">
+      <div class="director-progress-bar-track">
+        <div class="director-progress-fill" id="directorProgressFill"></div>
+      </div>
+      <div class="director-step-meta">
+        <span class="director-step-badge" id="directorStepBadge">STAGE 01 / 10</span>
+        <span class="director-step-title" id="directorStepTitle">Student Identification &amp; Instant Roll Search</span>
+      </div>
     </div>
-    <div class="pedagogy-why" id="pedagogyWhy">
+
+    <div class="director-controls">
+      <button class="btn-dir" id="prevStageBtn" disabled>
+        <span>&larr;</span> Previous
+      </button>
+      <button class="btn-dir primary" id="nextStageBtn">
+        Next Stage <span>&rarr;</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ========================================================
+       5. FLOATING PEDAGOGICAL STORY CARD
+       ======================================================== -->
+  <aside class="floating-story-card" id="storyCard">
+    <div class="story-tag-pill" id="storyTag">🩺 DOCTOR WORKSTATION &bull; LESSON 1</div>
+    <h3 class="story-h3" id="storyTitle">Student Roll Search &amp; Identification</h3>
+    <div class="story-body" id="storyBody">
+      The doctor types the student's 10-character institutional roll number (e.g. 24AB012001) to immediately load their enrolled college identity, hostel location, and medical file.
+    </div>
+    <div class="story-why-box" id="storyWhy">
       <strong>Why Students Need This:</strong> Prevents medical mix-ups. Ensures treatments and medication schedules are matched to the exact student and hostel room without paperwork delays.
     </div>
-    <button class="pedagogy-action-btn" id="pedagogyActionBtn">
-      <span>✨</span> Simulate Next Action
+    <button class="story-action-btn" id="storyActionBtn">
+      <span>✨</span> Simulate Action
     </button>
   </aside>
 

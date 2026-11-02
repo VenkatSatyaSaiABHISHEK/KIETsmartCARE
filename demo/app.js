@@ -1,138 +1,142 @@
-// KIET Smart Care - Interactive Educational Demo Controller
+// ========================================================
+// KIET SMART CARE - CINEMATIC DIRECTOR CONTROLLER
+// High-Impact Interactive Presentation Engine
+// ========================================================
 
-// Step-by-step pedagogical tour data across all 3 personas
-const tourSteps = [
-  // --- DOCTOR PORTAL STEPS (0 to 3) ---
+const directorStages = [
+  // --- DOCTOR OPD WORKSTATION (Stages 0 to 3) ---
   {
     persona: "doctor",
-    stepIndexText: "STEP 1 OF 10",
-    headline: "Doctor Student Lookup & Identification",
-    tag: "🩺 DOCTOR PORTAL • LESSON 1",
-    title: "1. Rapid Student Roll Number Search",
-    what: "The doctor simply types the student's 10-character institutional roll number (e.g. 24AB012001). The system queries Supabase in real-time to load their name, branch, hostel block, and room number.",
-    why: "Prevents clinical misidentification. Doctors never have to ask students for redundant paper slips or manual records.",
-    spotlightId: "docSpotlightSearch",
-    actionLabel: "Simulate Student Selected →",
-    actionFn: () => {
-      const card = document.getElementById("docSpotlightCard");
+    stageBadge: "STAGE 01 / 10",
+    stageTitle: "Student Identification & 10-Digit Roll Lookup",
+    storyTag: "🩺 DOCTOR CLINICAL DESK • LESSON 1",
+    storyTitle: "1. Instant Student Roll Number Search",
+    storyBody: "The doctor simply types the student's 10-character institutional roll number (e.g. 24AB012001). The system queries Supabase in real-time to load their name, branch, hostel block, and room number.",
+    storyWhy: "Prevents clinical misidentification. Doctors never have to ask students for redundant paper slips or manual records.",
+    lensTarget: "spotlightDocSearch",
+    actionText: "▶ Simulate Student Selected",
+    onAction: () => {
+      const card = document.getElementById("spotlightDocSelectedCard");
       if (card) {
-        card.style.transform = "scale(1.03)";
-        setTimeout(() => card.style.transform = "scale(1)", 300);
+        card.style.transform = "scale(1.04)";
+        card.style.borderColor = "#0284c7";
+        setTimeout(() => card.style.transform = "scale(1)", 350);
       }
     }
   },
   {
     persona: "doctor",
-    stepIndexText: "STEP 2 OF 10",
-    headline: "Allergy Invariant Protection (NKDA)",
-    tag: "🩺 DOCTOR PORTAL • LESSON 2",
-    title: "2. Automatic Drug Allergy Safety Lock",
-    what: "Before prescribing, the system highlights known drug allergies recorded during college admission. Here, Penicillin and Amoxicillin are flagged in red.",
-    why: "Patient Safety Invariant: Prevents accidental allergic reactions or anaphylaxis by locking out contraindicated medicines before the prescription can be written.",
-    spotlightId: "docSpotlightAllergy",
-    actionLabel: "Verify Safe Formulary →",
-    actionFn: () => {
-      const banner = document.getElementById("docSpotlightAllergy");
-      if (banner) {
-        banner.style.animation = "pulseAlarm 0.8s ease 2";
+    stageBadge: "STAGE 02 / 10",
+    stageTitle: "Allergy Invariant Protection & Contraindication Lock",
+    storyTag: "🩺 DOCTOR CLINICAL DESK • LESSON 2",
+    storyTitle: "2. Automatic Drug Allergy Safety Shield",
+    storyBody: "Before prescribing, the system highlights known drug allergies recorded during college admission. Here, Penicillin and Amoxicillin are flagged in red.",
+    storyWhy: "Patient Safety Invariant: Prevents accidental allergic reactions or anaphylaxis by locking out contraindicated medicines before the prescription can be written.",
+    lensTarget: "spotlightDocAllergy",
+    actionText: "▶ Verify Safe Formulary",
+    onAction: () => {
+      const shield = document.getElementById("spotlightDocAllergy");
+      if (shield) {
+        shield.style.boxShadow = "0 0 35px rgba(239, 68, 68, 0.7)";
+        setTimeout(() => shield.style.boxShadow = "none", 1200);
       }
     }
   },
   {
     persona: "doctor",
-    stepIndexText: "STEP 3 OF 10",
-    headline: "Clinical Formulary & Meal Timing Selection",
-    tag: "🩺 DOCTOR PORTAL • LESSON 3",
-    title: "3. Direct-to-Phone Prescription Engine",
-    what: "The doctor selects medications from the approved KIET dispensary formulary. For each item, meal-relative instructions (Pre-breakfast, Post-lunch, Bedtime) and duration are designated.",
-    why: "Students often forget whether antibiotics or painkillers should be taken before or after meals. The system converts these choices into custom alarm schedules automatically.",
-    spotlightId: "docSpotlightPrescription",
-    actionLabel: "View Submission Lock →",
-    actionFn: () => {}
+    stageBadge: "STAGE 03 / 10",
+    stageTitle: "Direct-to-Phone Formulary Prescribing Engine",
+    storyTag: "🩺 DOCTOR CLINICAL DESK • LESSON 3",
+    storyTitle: "3. Direct-to-Phone Prescription Engine",
+    storyBody: "The doctor selects medications from the approved KIET dispensary formulary. For each item, meal-relative instructions (Pre-breakfast, Post-lunch, Bedtime) and duration are designated.",
+    storyWhy: "Students often forget whether antibiotics or painkillers should be taken before or after meals. The system converts these choices into custom alarm schedules automatically.",
+    lensTarget: "spotlightDocRx",
+    actionText: "▶ Inspect Meal Mappings",
+    onAction: () => {}
   },
   {
     persona: "doctor",
-    stepIndexText: "STEP 4 OF 10",
-    headline: "Immutable Medical Record & Phone Synchronization",
-    tag: "🩺 DOCTOR PORTAL • LESSON 4",
-    title: "4. Immutable Submission & Device Push",
-    what: "When the doctor clicks 'Submit Consultation', the prescription is locked permanently under institutional medical invariants (cannot be altered post-submission) and pushed immediately to the student's mobile app.",
-    why: "Guarantees complete legal and clinical audit trails. The moment the student walks out of the dispensary, their phone is already programmed with the exact dosage schedule.",
-    spotlightId: "docSpotlightSubmit",
-    actionLabel: "Simulate Submission Click ✨",
-    actionFn: () => {
+    stageBadge: "STAGE 04 / 10",
+    stageTitle: "Immutable Cryptographic Submission & Mobile Push",
+    storyTag: "🩺 DOCTOR CLINICAL DESK • LESSON 4",
+    storyTitle: "4. Immutable Submission & Device Push",
+    storyBody: "When the doctor clicks 'Seal Consultation', the prescription is locked permanently under institutional medical invariants (cannot be altered post-submission) and pushed immediately to the student's mobile app.",
+    storyWhy: "Guarantees complete legal and clinical audit trails. The moment the student walks out of the dispensary, their phone is already programmed with the exact dosage schedule.",
+    lensTarget: "spotlightDocSubmit",
+    actionText: "▶ Seal & Transmit to Student Phone ✨",
+    onAction: () => {
       const btn = document.getElementById("simulateSubmitBtn");
       if (btn) {
-        btn.innerHTML = "<span>✓</span> Consultation Locked & Synced to Aarav's Phone!";
-        btn.style.background = "#10b981";
+        btn.innerHTML = "<span>✓</span> Consultation Sealed & Transmitted to Aarav's Phone!";
+        btn.style.background = "linear-gradient(135deg, #059669, #10b981)";
         setTimeout(() => {
-          btn.innerHTML = "<span>🔒</span> Submit Consultation & Sync To Student Phone";
-          btn.style.background = "#0f172a";
-        }, 2500);
+          btn.innerHTML = "<span>🔒</span> Seal Consultation & Push To Aarav's Phone";
+          btn.style.background = "linear-gradient(135deg, #0f172a, #1e293b)";
+        }, 2800);
       }
     }
   },
 
-  // --- HEALTH OFFICER PORTAL STEPS (4 to 6) ---
+  // --- HEALTH OFFICER SURVEILLANCE HQ (Stages 4 to 6) ---
   {
     persona: "officer",
-    stepIndexText: "STEP 5 OF 10",
-    headline: "Campus Surveillance & Epidemic Metrics Strip",
-    tag: "🛡️ HEALTH OFFICER • LESSON 5",
-    title: "5. Realtime Campus Health Intelligence",
-    what: "The Health Officer's dashboard displays high-level institutional metrics: Active Sick Hostellers, Overdue Doses, Adherence Rates, and Critical Red Flags.",
-    why: "Enables campus administrators to detect infectious outbreaks (e.g. viral fever clusters in specific hostel blocks) before they spread to the wider student body.",
-    spotlightId: "offSpotlightMetrics",
-    actionLabel: "Inspect Alarm Queue →",
-    actionFn: () => {}
+    stageBadge: "STAGE 05 / 10",
+    stageTitle: "Campus Surveillance & Real-Time Epidemic Telemetry",
+    storyTag: "🛡️ TRIAGE COMMAND HQ • LESSON 5",
+    storyTitle: "5. Real-Time Campus Health Intelligence",
+    storyBody: "The Health Officer's dashboard displays high-level institutional metrics: Active Sick Hostellers, Overdue Doses, Adherence Rates, and Critical Red Flags.",
+    storyWhy: "Enables campus administrators to detect infectious outbreaks (e.g. viral fever clusters in specific hostel blocks) before they spread to the wider student body.",
+    lensTarget: "spotlightOffMetrics",
+    actionText: "▶ Inspect Alert Queue",
+    onAction: () => {}
   },
   {
     persona: "officer",
-    stepIndexText: "STEP 6 OF 10",
-    headline: "Priority Escalation & Missed Dose Queue",
-    tag: "🛡️ HEALTH OFFICER • LESSON 6",
-    title: "6. Automated Red Flag Escalation",
-    what: "If a student does not confirm taking a prescribed medication within 60 minutes of the scheduled alarm, the system automatically escalates an urgent alert to the Health Officer console.",
-    why: "Ensures students who are sick, asleep, or incapacitated in hostel rooms are not forgotten. The campus actively looks out for their recovery.",
-    spotlightId: "offSpotlightQueue",
-    actionLabel: "Simulate Outreach Call 📞",
-    actionFn: () => {
-      const actionBtn = document.getElementById("offSpotlightAction");
-      if (actionBtn) {
-        actionBtn.innerText = "✓ Call Logged: Warden Alerted";
-        actionBtn.style.background = "#10b981";
+    stageBadge: "STAGE 06 / 10",
+    stageTitle: "Priority Escalation & Missed Dose Triage Queue",
+    storyTag: "🛡️ TRIAGE COMMAND HQ • LESSON 6",
+    storyTitle: "6. Automated Red Flag Escalation",
+    storyBody: "If a student does not confirm taking a prescribed medication within 60 minutes of the scheduled alarm, the system automatically escalates an urgent alert to the Health Officer console.",
+    storyWhy: "Ensures students who are sick, asleep, or incapacitated in hostel rooms are not forgotten. The campus actively looks out for their recovery.",
+    lensTarget: "spotlightOffQueue",
+    actionText: "▶ Dispatch Campus Outreach 📞",
+    onAction: () => {
+      const callBtn = document.getElementById("spotlightOffAction");
+      if (callBtn) {
+        callBtn.innerText = "✓ Dispatch Confirmed: Warden & Nurse Notified";
+        callBtn.style.background = "linear-gradient(135deg, #059669, #10b981)";
         setTimeout(() => {
-          actionBtn.innerText = "📞 Call Student / Warden";
-          actionBtn.style.background = "#0284c7";
-        }, 2500);
+          callBtn.innerText = "📞 Dispatch Hostel Warden";
+          callBtn.style.background = "linear-gradient(135deg, #0284c7, #0d9488)";
+        }, 3000);
       }
     }
   },
 
-  // --- STUDENT MOBILE APP STEPS (7 to 9) ---
+  // --- STUDENT OFFLINE ENGINE (Stages 7 to 9) ---
   {
     persona: "student",
-    stepIndexText: "STEP 7 OF 10",
-    headline: "Student Mobile: 100% Offline Medication Engine",
-    tag: "📱 STUDENT MOBILE • LESSON 7",
-    title: "7. Hardware-Level Offline Alarms",
-    what: "Look at Phone 1. The student app synchronizes when connected to Wi-Fi, then programs exact native OS hardware alarms using the student's personal meal schedule (Breakfast, Lunch, Dinner).",
-    why: "CRITICAL: The student does NOT need internet connection for the reminder alarm to ring! Even in airplane mode or during hostel Wi-Fi outages, alarms ring on schedule with gentle audio chimes.",
-    spotlightId: "studSpotlightSchedule",
-    actionLabel: "Trigger Simulated Alarm 🔔",
-    actionFn: () => {}
+    stageBadge: "STAGE 07 / 10",
+    stageTitle: "Native Mobile Hardware-Level Offline Alarms",
+    storyTag: "📱 STUDENT OFFLINE ENGINE • LESSON 7",
+    storyTitle: "7. Hardware-Level Offline Alarms",
+    storyBody: "Look at Phone 1. The student app synchronizes when connected to Wi-Fi, then programs exact native OS hardware alarms using the student's personal meal schedule (Breakfast, Lunch, Dinner).",
+    storyWhy: "CRITICAL: The student does NOT need internet connection for the reminder alarm to ring! Even in airplane mode or during hostel Wi-Fi outages, alarms ring on schedule with gentle audio chimes.",
+    lensTarget: "spotlightStudSchedule",
+    actionText: "▶ Trigger Alarm Simulation 🔔",
+    onAction: () => {}
   },
   {
     persona: "student",
-    stepIndexText: "STEP 8 OF 10",
-    headline: "One-Tap Dose Confirmation & Logging",
-    tag: "📱 STUDENT MOBILE • LESSON 8",
-    title: "8. One-Tap Confirmation & Safe Taking",
-    what: "Look at Phone 2. When the alarm fires, an interactive full-screen prompt appears with medication instructions ('Take with full glass of water').",
-    why: "Tapping 'I Have Taken This Dose' stops the alarm chime and logs the dose. If offline, the event is securely queued locally and syncs to Supabase the moment network is restored.",
-    spotlightId: "studSpotlightAlarm",
-    actionLabel: "Simulate 'Take Dose' Tap ✓",
-    actionFn: () => {
+    stageBadge: "STAGE 08 / 10",
+    stageTitle: "Interactive Alarm Trigger & 1-Tap Adherence Confirmation",
+    storyTag: "📱 STUDENT OFFLINE ENGINE • LESSON 8",
+    storyTitle: "8. One-Tap Confirmation & Safe Taking",
+    storyBody: "Look at Phone 2. When the alarm fires, an interactive full-screen prompt appears with medication instructions ('Take with full glass of water').",
+    storyWhy: "Tapping 'I Have Taken This Dose' stops the alarm chime and logs the dose. If offline, the event is securely queued locally and syncs to Supabase the moment network is restored.",
+    lensTarget: "spotlightStudAlarm",
+    actionText: "▶ Simulate 'Take Dose' Tap ✓",
+    onAction: () => {
       const takeBtn = document.getElementById("simulateTakeDoseBtn");
       if (takeBtn) {
         takeBtn.innerText = "✓ DOSE LOGGED (STOPPING ALARM)";
@@ -140,185 +144,221 @@ const tourSteps = [
         setTimeout(() => {
           takeBtn.innerText = "✓ I HAVE TAKEN THIS DOSE";
           takeBtn.style.background = "#10b981";
-        }, 2500);
+        }, 2800);
       }
     }
   },
   {
     persona: "student",
-    stepIndexText: "STEP 9 OF 10",
-    headline: "Emergency Helplines & On-Campus Ambulance",
-    tag: "📱 STUDENT MOBILE • LESSON 9",
-    title: "9. Instant 1-Tap Campus Helplines",
-    what: "Look at Phone 3. The emergency screen provides direct one-tap telephone links to: (1) KIET Campus Central Clinic, (2) Attending OPD Doctor, and (3) Active Hostel Triage Officer.",
-    why: "Removes panic during medical emergencies. Instead of searching contacts or notice boards, students can connect directly to campus health responders in seconds.",
-    spotlightId: "studSpotlightHelp",
-    actionLabel: "Review Complete Ecosystem ✨",
-    actionFn: () => {}
+    stageBadge: "STAGE 09 / 10",
+    stageTitle: "Instant 1-Tap Direct Campus Helplines",
+    storyTag: "📱 STUDENT OFFLINE ENGINE • LESSON 9",
+    storyTitle: "9. Instant 1-Tap Campus Helplines",
+    storyBody: "Look at Phone 3. The emergency screen provides direct one-tap telephone links to: (1) KIET Campus Central Clinic, (2) Attending OPD Doctor, and (3) Active Hostel Triage Officer.",
+    storyWhy: "Removes panic during medical emergencies. Instead of searching contacts or notice boards, students can connect directly to campus health responders in seconds.",
+    lensTarget: "spotlightStudHelp",
+    actionText: "▶ Complete Ecosystem Summary ✨",
+    onAction: () => {}
   },
   {
     persona: "student",
-    stepIndexText: "STEP 10 OF 10",
-    headline: "Summary: The Closed-Loop Care Ecosystem",
-    tag: "🎓 CLASSROOM SUMMARY",
-    title: "10. Full System Harmony & Student Safety",
-    what: "From Doctor Prescription → to Offline Mobile Alarms → to Student Confirmation → to Officer Surveillance: KIET Smart Care creates a closed loop where no sick student is left unattended.",
-    why: "Empowers the institution to safeguard student health, increase medication adherence to 95%+, and maintain complete clinical compliance.",
-    spotlightId: null,
-    actionLabel: "Restart Presentation 🔄",
-    actionFn: () => {
-      goToStep(0);
+    stageBadge: "STAGE 10 / 10",
+    stageTitle: "Closed-Loop Healthcare & Campus Safety Harmony",
+    storyTag: "🎓 EXECUTIVE SUMMARY",
+    storyTitle: "10. Full System Harmony & Student Safety",
+    storyBody: "From Doctor Prescription → to Offline Mobile Alarms → to Student Confirmation → to Officer Surveillance: KIET Smart Care creates a closed loop where no sick student is left unattended.",
+    storyWhy: "Empowers the institution to safeguard student health, increase medication adherence to 95%+, and maintain complete clinical compliance.",
+    lensTarget: null,
+    actionText: "🔄 Replay Presentation from Beginning",
+    onAction: () => {
+      jumpToStage(0);
     }
   }
 ];
 
-let currentStep = 0;
+let activeStageIdx = 0;
 
-// Elements
-const stepCounterBadge = document.getElementById("stepCounterBadge");
-const stepHeadlineText = document.getElementById("stepHeadlineText");
-const prevStepBtn = document.getElementById("prevStepBtn");
-const nextStepBtn = document.getElementById("nextStepBtn");
+// DOM Elements
+const introCurtain = document.getElementById("introCurtain");
+const launchDemoBtn = document.getElementById("launchDemoBtn");
+
+const dockTabs = document.querySelectorAll(".dock-tab");
+const doctorViewport = document.getElementById("doctorViewport");
+const officerViewport = document.getElementById("officerViewport");
+const studentViewport = document.getElementById("studentViewport");
+
+const directorProgressFill = document.getElementById("directorProgressFill");
+const directorStepBadge = document.getElementById("directorStepBadge");
+const directorStepTitle = document.getElementById("directorStepTitle");
+const prevStageBtn = document.getElementById("prevStageBtn");
+const nextStageBtn = document.getElementById("nextStageBtn");
+
+const storyCard = document.getElementById("storyCard");
+const storyTag = document.getElementById("storyTag");
+const storyTitle = document.getElementById("storyTitle");
+const storyBody = document.getElementById("storyBody");
+const storyWhy = document.getElementById("storyWhy");
+const storyActionBtn = document.getElementById("storyActionBtn");
+
+const fullscreenToggleBtn = document.getElementById("fullscreenToggleBtn");
 const restartTourBtn = document.getElementById("restartTourBtn");
+const homeLogoBtn = document.getElementById("homeLogoBtn");
 
-const pedagogyCard = document.getElementById("pedagogyCard");
-const pedagogyTag = document.getElementById("pedagogyTag");
-const pedagogyTitle = document.getElementById("pedagogyTitle");
-const pedagogyWhat = document.getElementById("pedagogyWhat");
-const pedagogyWhy = document.getElementById("pedagogyWhy");
-const pedagogyActionBtn = document.getElementById("pedagogyActionBtn");
+// Launch Experience
+launchDemoBtn.addEventListener("click", () => {
+  introCurtain.classList.add("hidden");
+  // Try entering fullscreen if user clicked launch
+  if (document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+  jumpToStage(0);
+});
 
-const tabButtons = document.querySelectorAll(".tab-btn");
-const doctorView = document.getElementById("doctorView");
-const officerView = document.getElementById("officerView");
-const studentView = document.getElementById("studentView");
+homeLogoBtn.addEventListener("click", () => {
+  introCurtain.classList.remove("hidden");
+});
 
-// Switch Portal View
-function switchView(viewName) {
-  tabButtons.forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.view === viewName);
+// Fullscreen API Toggle
+fullscreenToggleBtn.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+});
+
+// Viewport Switcher
+function setStagePersona(persona) {
+  dockTabs.forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.view === persona);
   });
 
-  doctorView.classList.toggle("active-view", viewName === "doctor");
-  doctorView.style.display = viewName === "doctor" ? "block" : "none";
-
-  officerView.classList.toggle("active-view", viewName === "officer");
-  officerView.style.display = viewName === "officer" ? "block" : "none";
-
-  studentView.classList.toggle("active-view", viewName === "student");
-  studentView.style.display = viewName === "student" ? "flex" : "none";
+  doctorViewport.classList.toggle("active", persona === "doctor");
+  officerViewport.classList.toggle("active", persona === "officer");
+  studentViewport.classList.toggle("active", persona === "student");
 }
 
-// Update Tour Step
-function renderStep(index) {
-  if (index < 0 || index >= tourSteps.length) return;
-  currentStep = index;
-  const step = tourSteps[currentStep];
+// Stage Renderer
+function renderStage(idx) {
+  if (idx < 0 || idx >= directorStages.length) return;
+  activeStageIdx = idx;
+  const stage = directorStages[activeStageIdx];
 
-  // 1. Ensure active view is visible
-  switchView(step.persona);
+  // 1. Activate Stage Viewport
+  setStagePersona(stage.persona);
 
-  // 2. Update Top Bar
-  stepCounterBadge.innerText = step.stepIndexText;
-  stepHeadlineText.innerText = step.headline;
+  // 2. Update Director Progress Bar & Metadata
+  const progressPercent = Math.round(((activeStageIdx + 1) / directorStages.length) * 100);
+  directorProgressFill.style.width = `${progressPercent}%`;
+  directorStepBadge.innerText = stage.stageBadge;
+  directorStepTitle.innerText = stage.stageTitle;
 
-  // 3. Update Buttons
-  prevStepBtn.disabled = currentStep === 0;
-  nextStepBtn.innerText = currentStep === tourSteps.length - 1 ? "Finish Tour ✓" : "Next Step →";
+  prevStageBtn.disabled = activeStageIdx === 0;
+  nextStageBtn.innerText = activeStageIdx === directorStages.length - 1 ? "Complete Tour ✓" : "Next Stage →";
 
-  // 4. Update Floating Pedagogical Card
-  pedagogyTag.innerText = step.tag;
-  pedagogyTitle.innerText = step.title;
-  pedagogyWhat.innerText = step.what;
-  pedagogyWhy.innerHTML = `<strong>Why Students Need This:</strong> ${step.why}`;
-  pedagogyActionBtn.innerText = step.actionLabel;
+  // 3. Update Storyboard Card
+  storyTag.innerText = stage.storyTag;
+  storyTitle.innerText = stage.storyTitle;
+  storyBody.innerText = stage.storyBody;
+  storyWhy.innerHTML = `<strong>Why Students Need This:</strong> ${stage.storyWhy}`;
+  storyActionBtn.innerText = stage.actionText;
 
-  // 5. Remove existing spotlight highlights
-  document.querySelectorAll(".spotlight-active").forEach(el => {
-    el.classList.remove("spotlight-active");
-  });
+  // 4. Clear all previous spotlight highlights
+  document.querySelectorAll(".lens-highlight").forEach(el => el.classList.remove("lens-highlight"));
 
-  // 6. Highlight target element if present
-  if (step.spotlightId) {
-    const targetEl = document.getElementById(step.spotlightId);
-    if (targetEl) {
-      targetEl.classList.add("spotlight-active");
-      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  // 5. Apply spotlight highlight to current target
+  if (stage.lensTarget) {
+    const targetElement = document.getElementById(stage.lensTarget);
+    if (targetElement) {
+      targetElement.classList.add("lens-highlight");
+      targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 }
 
-function goToStep(index) {
-  renderStep(index);
+function jumpToStage(idx) {
+  renderStage(idx);
 }
 
-// Event Listeners for Persona Tabs
-tabButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    const view = btn.dataset.view;
-    if (view === "doctor") goToStep(0);
-    else if (view === "officer") goToStep(4);
-    else if (view === "student") goToStep(6);
+// Persona Tabs direct click
+dockTabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    const persona = tab.dataset.view;
+    if (persona === "doctor") jumpToStage(0);
+    else if (persona === "officer") jumpToStage(4);
+    else if (persona === "student") jumpToStage(6);
   });
 });
 
-// Navigation Controls
-prevStepBtn.addEventListener("click", () => {
-  if (currentStep > 0) goToStep(currentStep - 1);
+// Director Controls
+prevStageBtn.addEventListener("click", () => {
+  if (activeStageIdx > 0) jumpToStage(activeStageIdx - 1);
 });
 
-nextStepBtn.addEventListener("click", () => {
-  if (currentStep < tourSteps.length - 1) {
-    goToStep(currentStep + 1);
+nextStageBtn.addEventListener("click", () => {
+  if (activeStageIdx < directorStages.length - 1) {
+    jumpToStage(activeStageIdx + 1);
   } else {
-    goToStep(0);
+    jumpToStage(0);
   }
 });
 
 restartTourBtn.addEventListener("click", () => {
-  goToStep(0);
+  jumpToStage(0);
 });
 
-pedagogyActionBtn.addEventListener("click", () => {
-  const step = tourSteps[currentStep];
-  if (step && typeof step.actionFn === "function") {
-    step.actionFn();
+storyActionBtn.addEventListener("click", () => {
+  const stage = directorStages[activeStageIdx];
+  if (stage && typeof stage.onAction === "function") {
+    stage.onAction();
   }
+  // Auto advance smoothly after brief moment if not last stage
   setTimeout(() => {
-    if (currentStep < tourSteps.length - 1) {
-      goToStep(currentStep + 1);
+    if (activeStageIdx < directorStages.length - 1) {
+      jumpToStage(activeStageIdx + 1);
     }
-  }, 1000);
+  }, 1200);
 });
 
-// Simulated interaction hooks
+// Interactive Elements within Workstations
 const simulateSubmitBtn = document.getElementById("simulateSubmitBtn");
 if (simulateSubmitBtn) {
   simulateSubmitBtn.addEventListener("click", () => {
-    const step = tourSteps[3];
-    if (step && step.actionFn) step.actionFn();
+    const stage = directorStages[3];
+    if (stage && stage.onAction) stage.onAction();
+  });
+}
+
+const spotlightOffAction = document.getElementById("spotlightOffAction");
+if (spotlightOffAction) {
+  spotlightOffAction.addEventListener("click", () => {
+    const stage = directorStages[5];
+    if (stage && stage.onAction) stage.onAction();
   });
 }
 
 const simulateTakeDoseBtn = document.getElementById("simulateTakeDoseBtn");
 if (simulateTakeDoseBtn) {
   simulateTakeDoseBtn.addEventListener("click", () => {
-    const step = tourSteps[7];
-    if (step && step.actionFn) step.actionFn();
+    const stage = directorStages[7];
+    if (stage && stage.onAction) stage.onAction();
   });
 }
 
-// Keyboard shortcuts for classroom presentation
+// Keyboard Navigation for Classrooms / Presenters
 window.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowRight" || e.key === "PageDown") {
-    if (currentStep < tourSteps.length - 1) goToStep(currentStep + 1);
+  if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+    if (activeStageIdx < directorStages.length - 1) jumpToStage(activeStageIdx + 1);
+    else jumpToStage(0);
   } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-    if (currentStep > 0) goToStep(currentStep - 1);
-  } else if (e.key === "Home") {
-    goToStep(0);
+    if (activeStageIdx > 0) jumpToStage(activeStageIdx - 1);
+  } else if (e.key === "f" || e.key === "F") {
+    fullscreenToggleBtn.click();
+  } else if (e.key === "Escape") {
+    // Escape will naturally exit fullscreen
   }
 });
 
-// Initial boot
-renderStep(0);
-console.log("KIET Smart Care Educational Demo Loaded successfully.");
+// Boot up
+renderStage(0);
+console.log("KIET Smart Care Presentation Engine Ready.");
