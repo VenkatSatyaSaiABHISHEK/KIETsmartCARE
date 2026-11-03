@@ -6,7 +6,7 @@ import {
   BEFORE_MEAL_OFFSET_MINUTES,
   AFTER_MEAL_OFFSET_MINUTES,
   DEFAULT_MEAL_TIMES,
-  MISSED_DOSE_ADVISORY,
+  formatTime12h,
 } from '../constants/shared';
 
 // Setup foreground notification handler
@@ -27,7 +27,7 @@ export class ReminderEngine {
   private static isInitialized = false;
 
   /**
-   * Initialize notification channels (High-importance Android channel & recorded voice action buttons)
+   * Initialize notification channels (High-importance Android channel with custom chime sound)
    */
   static async init(): Promise<boolean> {
     if (this.isInitialized) return true;
@@ -43,11 +43,11 @@ export class ReminderEngine {
           name: 'Medicine Dose Reminders',
           description: 'High-importance campus healthcare dose reminders tied to meals',
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 300, 200, 300],
+          vibrationPattern: [0, 400, 200, 400, 200, 600],
           lightColor: '#0284C7',
           sound: 'chime_reminder.wav',
           lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-          bypassDnd: false,
+          bypassDnd: true,
           enableVibrate: true,
         });
       }
@@ -66,7 +66,7 @@ export class ReminderEngine {
         },
         {
           identifier: 'not_taken',
-          buttonTitle: 'Not Taken',
+          buttonTitle: 'Missed',
           options: { opensAppToForeground: true },
         },
       ]);
@@ -112,7 +112,7 @@ export class ReminderEngine {
     await this.init();
 
     if (Platform.OS === 'web') {
-      console.log(`[REMINDER ENGINE] Web platform detected. Synchronized ${doses.length} dose schedules without native notification alarms.`);
+      console.log(`[REMINDER ENGINE] Web platform detected. Synchronized ${doses.length} dose schedules.`);
       return doses.length;
     }
 
@@ -133,16 +133,24 @@ export class ReminderEngine {
     for (const dose of doses) {
       if (dose.status !== 'scheduled' && dose.status !== 'unconfirmed') continue;
 
-      const triggerDate = this.calculateDoseDateTime(
-        dose.meal_slot || dose.slot || 'morning',
-        dose.meal_relation || 'after',
-        mealTimes,
-        dose.time || (dose.scheduled_time && dose.scheduled_time.length === 5 ? dose.scheduled_time : undefined)
-      );
+      let triggerDate: Date;
+
+      // 1. If explicit scheduled_at ISO timestamp is provided, parse it
+      if (dose.scheduled_at) {
+        triggerDate = new Date(dose.scheduled_at);
+      } else {
+        triggerDate = this.calculateDoseDateTime(
+          dose.meal_slot || dose.slot || 'morning',
+          dose.meal_relation || 'after',
+          mealTimes,
+          dose.time || (dose.scheduled_time && dose.scheduled_time.length === 5 ? dose.scheduled_time : undefined)
+        );
+      }
+
       if (triggerDate > now) {
         const key = triggerDate.toISOString();
         const relationStr = dose.meal_relation === 'after' ? 'after' : 'before';
-        const mealStr = dose.meal_slot.toLowerCase();
+        const mealStr = (dose.meal_slot || dose.slot || 'meal').toLowerCase();
 
         if (!groupedDoses[key]) {
           groupedDoses[key] = { triggerDate, relationStr, mealStr, doses: [] };
@@ -153,15 +161,16 @@ export class ReminderEngine {
 
     for (const key of Object.keys(groupedDoses)) {
       const group = groupedDoses[key];
-      const medListStr = group.doses.map((d) => `${d.medicine_name} (${d.dose || '1 dose'})`).join(', ');
-      const bodyText = `${medListStr} \u2014 ${group.relationStr} ${group.mealStr}.`;
+      const medListStr = group.doses.map((d) => `${d.medicine_name} (${d.dose || (d.tablets ? `${d.tablets} tab` : '1 dose')})`).join(', ');
+      const displayTimeStr = formatTime12h(group.triggerDate.toISOString());
+      const bodyText = `${medListStr} • ${group.relationStr} ${group.mealStr} (${displayTimeStr}).`;
       const primaryDoseId = group.doses[0].id;
       const allDoseIds = group.doses.map((d) => d.id);
 
       try {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: 'Time to take your medicine',
+            title: 'KIET Medicine Alarm 🔔',
             body: bodyText,
             sound: 'chime_reminder.wav',
             categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
@@ -234,7 +243,6 @@ export class ReminderEngine {
 
   /**
    * Handle dose answer: 'taken' | 'taken_late' | 'not_taken'
-   * Queues response offline immediately and cancels redundant reminders.
    */
   static async recordDoseResponse(
     doseId: string,
@@ -242,14 +250,12 @@ export class ReminderEngine {
   ): Promise<void> {
     console.log(`[REMINDER ENGINE] Recording dose response: ${doseId} -> ${response}`);
 
-    // Queue response offline
     await OfflineQueue.enqueue('DOSE_RESPONSE', {
       dose_id: doseId,
       status: response,
       answered_at: new Date().toISOString(),
     });
 
-    // Attempt background sync
     OfflineQueue.flush().catch(() => {});
   }
 
@@ -257,50 +263,35 @@ export class ReminderEngine {
    * Diagnostic / Tester Trigger: Schedules an automated alarm with custom chime sound
    * to fire in `secondsDelay` seconds (default 3s). Works even if the student leaves or locks the phone!
    */
-  static async triggerImmediateAlarmTest(
-    secondsDelay: number = 3,
-    medicineName: string = 'Paracetamol 650mg'
-  ): Promise<string> {
+  static async triggerImmediateAlarmTest(secondsDelay = 3): Promise<void> {
     await this.init();
 
     if (Platform.OS === 'web') {
-      console.log(`[REMINDER ENGINE] Web diagnostic test alarm triggered for ${medicineName}.`);
-      if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          alert(`🔔 [MEDICINE REMINDER]\nTime to take your medicine:\n${medicineName} (1 tablet)`);
-        }, secondsDelay * 1000);
-      }
-      return 'web-alarm-scheduled';
+      alert('Alarm test scheduled in 3 seconds. Sound will play automatically!');
+      return;
     }
 
-    const triggerDate = new Date(Date.now() + secondsDelay * 1000);
-
-    const notificationId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Time to take your medicine',
-        body: `${medicineName} (1 tablet) — Scheduled Dose Reminder`,
-        sound: 'chime_reminder.wav',
-        categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
-        data: {
-          doseId: 'test-alarm-01',
-          type: 'TEST_ALARM_TRIGGER',
+    try {
+      const triggerDate = new Date(Date.now() + secondsDelay * 1000);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Campus Clinic • Medicine Alarm',
+          body: 'Scheduled time has arrived! Tablet 1 • After food.',
+          sound: 'chime_reminder.wav',
+          categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
+          data: {
+            doseId: 'test_dose_now',
+            type: 'TEST_ALARM',
+          },
+          priority: Notifications.AndroidNotificationPriority.MAX,
         },
-        priority: Notifications.AndroidNotificationPriority.MAX,
-      },
-      trigger: {
-        date: triggerDate,
-        channelId: ANDROID_CHANNEL_ID,
-      },
-    });
-
-    console.log(`[REMINDER ENGINE] Diagnostic automated alarm scheduled to ring at ${triggerDate.toLocaleTimeString()} with chime sound!`);
-    return notificationId;
-  }
-
-  /**
-   * Standard safety rule: Never tell a student to double a missed dose.
-   */
-  static getMissedDoseAdvisory(): string {
-    return MISSED_DOSE_ADVISORY;
+        trigger: {
+          date: triggerDate,
+          channelId: ANDROID_CHANNEL_ID,
+        },
+      });
+    } catch (err) {
+      console.warn('Immediate alarm test error:', err);
+    }
   }
 }

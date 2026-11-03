@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
+import { Audio } from 'expo-av';
 
+let soundObject: Audio.Sound | null = null;
 let audioContext: AudioContext | null = null;
 let alarmLoopInterval: any = null;
 let currentHtmlAudio: HTMLAudioElement | null = null;
@@ -25,11 +27,55 @@ function getAudioContext(): AudioContext | null {
 }
 
 /**
+ * Configure audio mode to ensure sound plays even if device is on silent/ringer switch off
+ */
+async function configureAudioMode(): Promise<void> {
+  if (Platform.OS !== 'web') {
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+    } catch (e) {
+      console.warn('[SOUND PLAYER] Failed to set audio mode:', e);
+    }
+  }
+}
+
+/**
  * Play a single chime pulse (used in preview & repeating in real alarm)
  */
 export async function playAlarmChime(): Promise<void> {
-  if (Platform.OS !== 'web') return;
+  // --- NATIVE PLATFORM (ANDROID / IOS) ---
+  if (Platform.OS !== 'web') {
+    try {
+      await configureAudioMode();
 
+      // Stop previous instance if exists
+      if (soundObject) {
+        try {
+          await soundObject.stopAsync();
+          await soundObject.unloadAsync();
+        } catch {}
+        soundObject = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/chime_reminder.wav'),
+        { shouldPlay: true, isLooping: false, volume: 1.0 }
+      );
+      soundObject = sound;
+      await soundObject.playAsync();
+      return;
+    } catch (err) {
+      console.warn('[SOUND PLAYER] Native sound playback failed:', err);
+    }
+    return;
+  }
+
+  // --- WEB PLATFORM ---
   // 1. Try playing custom sound asset
   try {
     if (!currentHtmlAudio) {
@@ -53,7 +99,7 @@ export async function playAlarmChime(): Promise<void> {
 
     const now = ctx.currentTime;
 
-    const playChimeTone = (freq: number, startOffset: number, duration: number, gainLevel = 0.4) => {
+    const playChimeTone = (freq: number, startOffset: number, duration: number, gainLevel = 0.5) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -72,13 +118,13 @@ export async function playAlarmChime(): Promise<void> {
     };
 
     // Medical Chime Sequence: 3 rising tones + 2 chord pulses
-    playChimeTone(659.25, 0.0, 0.7, 0.4);  // E5
-    playChimeTone(830.61, 0.22, 0.7, 0.4); // G#5
-    playChimeTone(987.77, 0.45, 1.1, 0.45); // B5
+    playChimeTone(659.25, 0.0, 0.7, 0.5);  // E5
+    playChimeTone(830.61, 0.22, 0.7, 0.5); // G#5
+    playChimeTone(987.77, 0.45, 1.1, 0.55); // B5
 
     // Gentle repeat echo
-    playChimeTone(659.25, 0.9, 0.5, 0.3);
-    playChimeTone(987.77, 1.1, 1.1, 0.35);
+    playChimeTone(659.25, 0.9, 0.5, 0.35);
+    playChimeTone(987.77, 1.1, 1.1, 0.4);
   } catch (synthErr) {
     console.warn('[SOUND PLAYER] Synthesizer error:', synthErr);
   }
@@ -87,17 +133,39 @@ export async function playAlarmChime(): Promise<void> {
 /**
  * Start REAL ALARM: continuous non-stop ringing until dismissed or taken!
  */
-export function startContinuousAlarm(): void {
+export async function startContinuousAlarm(): Promise<void> {
   if (isRinging) return;
   isRinging = true;
 
-  // Fire first chime immediately
+  // On Native, play looping audio directly
+  if (Platform.OS !== 'web') {
+    try {
+      await configureAudioMode();
+      if (soundObject) {
+        try {
+          await soundObject.stopAsync();
+          await soundObject.unloadAsync();
+        } catch {}
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/sounds/chime_reminder.wav'),
+        { shouldPlay: true, isLooping: true, volume: 1.0 }
+      );
+      soundObject = sound;
+      await soundObject.playAsync();
+      return;
+    } catch (e) {
+      console.warn('[SOUND PLAYER] Native continuous alarm error:', e);
+    }
+  }
+
+  // Web fallback with interval
   playAlarmChime();
 
-  // Show system notification if browser permits
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try {
-      new Notification('KIET Smart Care \u2014 Medicine Time!', {
+      new Notification('KIET Smart Care • Medicine Time!', {
         body: 'Your scheduled medicine dose is due now. Please take your medicine.',
         icon: '/favicon.ico',
         requireInteraction: true,
@@ -105,7 +173,6 @@ export function startContinuousAlarm(): void {
     } catch {}
   }
 
-  // Loop every 1.8 seconds continuously like a real alarm clock
   if (alarmLoopInterval) clearInterval(alarmLoopInterval);
   alarmLoopInterval = setInterval(() => {
     if (!isRinging) {
@@ -120,12 +187,22 @@ export function startContinuousAlarm(): void {
 /**
  * Stop alarm immediately (silence ringing)
  */
-export function stopAlarm(): void {
+export async function stopAlarm(): Promise<void> {
   isRinging = false;
+
+  if (soundObject) {
+    try {
+      await soundObject.stopAsync();
+      await soundObject.unloadAsync();
+    } catch {}
+    soundObject = null;
+  }
+
   if (alarmLoopInterval) {
     clearInterval(alarmLoopInterval);
     alarmLoopInterval = null;
   }
+
   if (currentHtmlAudio) {
     try {
       currentHtmlAudio.pause();
@@ -139,10 +216,21 @@ export function isAlarmRinging(): boolean {
 }
 
 /**
- * Request notification permissions and unlock AudioContext on user interaction
+ * Request audio and notification permissions and unlock AudioContext
  */
 export async function enableAudioAndNotifications(): Promise<boolean> {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  if (Platform.OS !== 'web') {
+    try {
+      await configureAudioMode();
+      // Test 1 quick pulse so native audio engine initializes
+      playAlarmChime();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (typeof window !== 'undefined') {
     try {
       const ctx = getAudioContext();
       if (ctx && ctx.state === 'suspended') {

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CheckCircle2, Clock, AlertCircle, HelpCircle } from 'lucide-react-native';
 import { DoseScheduleRecord } from '../types/student';
+import { formatTime12h } from '../constants/shared';
 
 interface TodayTimelineProps {
   doses: DoseScheduleRecord[];
@@ -14,7 +15,7 @@ export function TodayTimeline({ doses }: TodayTimelineProps) {
         return (
           <View style={[styles.badge, styles.takenBadge]}>
             <CheckCircle2 color="#166534" size={12} />
-            <Text style={styles.takenBadgeText}>Taken {confirmedAt ? `(${confirmedAt})` : ''}</Text>
+            <Text style={styles.takenBadgeText}>Taken {confirmedAt ? `(${formatTime12h(confirmedAt)})` : ''}</Text>
           </View>
         );
       case 'taken_late':
@@ -50,13 +51,14 @@ export function TodayTimeline({ doses }: TodayTimelineProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Today&apos;s Medication Timeline</Text>
+      <Text style={styles.heading}>TODAY&apos;S SCHEDULE</Text>
 
       <View style={styles.timelineList}>
         {doses.map((dose, index) => {
           const relationStr = dose.meal_relation === 'after' ? 'After' : 'Before';
-          const mealStr = dose.meal_slot.charAt(0).toUpperCase() + dose.meal_slot.slice(1);
+          const mealStr = (dose.slot || dose.meal_slot || 'Meal').charAt(0).toUpperCase() + (dose.slot || dose.meal_slot || 'Meal').slice(1);
           const isLast = index === doses.length - 1;
+          const displayTime = formatTime12h(dose.scheduled_at || dose.time || dose.scheduled_time);
 
           return (
             <View key={dose.id} style={styles.itemRow}>
@@ -80,7 +82,7 @@ export function TodayTimeline({ doses }: TodayTimelineProps) {
                   {getStatusBadge(dose.status, dose.confirmed_at)}
                 </View>
                 <Text style={styles.detailsText}>
-                  {dose.dose} &bull; {relationStr} {mealStr} ({dose.scheduled_time})
+                  {dose.dose || (dose.tablets ? `${dose.tablets} tablet` : '1 tablet')} • {relationStr} {mealStr} ({displayTime})
                 </Text>
               </View>
             </View>
@@ -93,55 +95,56 @@ export function TodayTimeline({ doses }: TodayTimelineProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
+    marginTop: 18,
+    marginHorizontal: 16,
   },
   heading: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0a0a0a',
-    letterSpacing: -0.3,
-    marginBottom: 16,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.8,
+    marginBottom: 12,
   },
   timelineList: {
-    gap: 4,
+    gap: 0,
   },
   itemRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   indicatorCol: {
-    width: 28,
+    width: 24,
     alignItems: 'center',
-    paddingTop: 16,
   },
   dot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#94A3B8',
+    marginTop: 6,
   },
   dotTaken: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#059669',
   },
   dotLate: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#D97706',
   },
   dotMissed: {
-    backgroundColor: '#ef4444',
+    backgroundColor: '#DC2626',
   },
   verticalLine: {
     width: 2,
     flex: 1,
-    minHeight: 44,
-    backgroundColor: '#e4e4e7',
-    marginTop: 4,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 4,
   },
   cardBox: {
     flex: 1,
-    backgroundColor: '#f4f4f5', // soft gray secondary surface
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   itemHeader: {
     flexDirection: 'row',
@@ -150,61 +153,60 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   medicineName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0a0a0a',
+    color: '#0F1B33',
   },
   detailsText: {
-    fontSize: 12,
-    color: '#71717a',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#64748B',
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
-    gap: 4,
+    borderRadius: 10,
   },
   takenBadge: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#ECFDF5',
   },
   takenBadgeText: {
-    color: '#166534',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#059669',
   },
   lateBadge: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#FFFBEB',
   },
   lateBadgeText: {
-    color: '#854d0e',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#D97706',
   },
   missedBadge: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: '#FEF2F2',
   },
   missedBadgeText: {
-    color: '#991b1b',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#DC2626',
   },
   unconfirmedBadge: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#F3F4F6',
   },
   unconfirmedBadgeText: {
-    color: '#4b5563',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#4B5563',
   },
   scheduledBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: '#EFF6FF',
   },
   scheduledBadgeText: {
-    color: '#1e40af',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#2563EB',
   },
 });

@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   Animated,
   Modal,
-  Platform,
 } from 'react-native';
 import { BellRing, Check, Clock, Pill, Volume2, X } from 'lucide-react-native';
 import { DoseScheduleRecord } from '../types/student';
+import { formatTime12h } from '../constants/shared';
 
 interface AlarmTakeoverModalProps {
   dose: DoseScheduleRecord | null;
@@ -81,7 +81,8 @@ export function AlarmTakeoverModal({
 
   if (!visible || !dose) return null;
 
-  const scheduledTimeStr = dose.time || dose.scheduled_time || 'Now';
+  // Format 12-hour AM/PM string accurately from scheduled_at ISO timestamp or time string
+  const displayTime = formatTime12h(dose.scheduled_at || dose.time || dose.scheduled_time);
   const medName = dose.medicine_name || 'Prescribed Tablet';
   const doseText = dose.tablets ? `${dose.tablets} tablet` : dose.dose || '1 tablet';
   const mealRelation = dose.meal_relation === 'after' ? 'After food' : 'Before food';
@@ -103,14 +104,14 @@ export function AlarmTakeoverModal({
           <X size={22} color="#94A3B8" />
         </TouchableOpacity>
 
-        {/* Top Header Tag */}
+        {/* Top Header Tag - Notice clean bullet symbol • without literal \\u2022 */}
         <View style={styles.tagWrap}>
           <Volume2 size={14} color="#38BDF8" />
-          <Text style={styles.tagText}>CAMPUS CLINIC \u2022 MEDICINE ALARM</Text>
+          <Text style={styles.tagText}>CAMPUS CLINIC • MEDICINE ALARM</Text>
         </View>
 
         {/* Big Time Display */}
-        <Text style={styles.bigTimeText}>{scheduledTimeStr}</Text>
+        <Text style={styles.bigTimeText}>{displayTime}</Text>
         <Text style={styles.reminderNoticeText}>SCHEDULED TIME HAS ARRIVED</Text>
 
         {/* Central Animated Ringing Bell */}
@@ -145,7 +146,7 @@ export function AlarmTakeoverModal({
             <View style={styles.medCardText}>
               <Text style={styles.medCardName}>{medName}</Text>
               <Text style={styles.medCardMeta}>
-                {doseText} \u2022 {mealRelation}
+                {doseText} • {mealRelation}
               </Text>
             </View>
           </View>
@@ -198,91 +199,94 @@ const styles = StyleSheet.create({
   },
   closeCornerBtn: {
     position: 'absolute',
-    top: 48,
+    top: 54,
     right: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 10,
-    padding: 8,
   },
   tagWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    borderColor: 'rgba(56, 189, 248, 0.3)',
+    gap: 8,
+    backgroundColor: 'rgba(2, 132, 199, 0.16)',
+    borderColor: 'rgba(56, 189, 248, 0.35)',
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
-    marginTop: 10,
+    marginTop: 20,
   },
   tagText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#38BDF8',
     letterSpacing: 1.2,
   },
   bigTimeText: {
-    fontSize: 54,
+    fontSize: 56,
     fontWeight: '800',
-    color: '#F8FAFC',
+    color: '#FFFFFF',
     letterSpacing: -1,
-    marginTop: 12,
+    marginTop: 10,
   },
   reminderNoticeText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#94A3B8',
-    letterSpacing: 1.5,
-    marginTop: -4,
+    letterSpacing: 1.4,
+    marginTop: -8,
   },
   bellCenterStage: {
-    width: 150,
-    height: 150,
+    width: 180,
+    height: 180,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
     marginVertical: 10,
   },
   radarRipple: {
     position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(239, 68, 68, 0.35)',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2,
+    borderColor: '#EF4444',
   },
   bellGlowCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#EF4444',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#EF4444',
+    shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.6,
-    shadowRadius: 24,
+    shadowRadius: 20,
     elevation: 12,
   },
   medCard: {
     width: '100%',
-    backgroundColor: 'rgba(30, 41, 59, 0.85)',
-    borderRadius: 16,
+    backgroundColor: '#1E293B',
+    borderRadius: 20,
+    padding: 20,
+    borderColor: '#334155',
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.15)',
-    padding: 18,
-    marginVertical: 14,
   },
   medCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    marginBottom: 10,
   },
   pillIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#E0F2FE',
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: 'rgba(2, 132, 199, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -295,66 +299,67 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   medCardMeta: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#94A3B8',
     marginTop: 2,
-    fontWeight: '500',
   },
   medAdvisory: {
     fontSize: 12,
-    color: '#CBD5E1',
-    lineHeight: 16,
+    color: '#64748B',
+    marginTop: 12,
+    lineHeight: 18,
   },
   buttonContainer: {
     width: '100%',
     gap: 12,
+    marginBottom: 10,
   },
   btnTakenPrimary: {
-    backgroundColor: '#10B981',
+    width: '100%',
+    height: 56,
+    backgroundColor: '#059669',
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 16,
-    borderRadius: 14,
-    shadowColor: '#10B981',
+    shadowColor: '#059669',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 6,
   },
   btnTakenPrimaryText: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.3,
   },
   btnLateSecondary: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    width: '100%',
+    height: 52,
+    backgroundColor: '#1E293B',
     borderColor: '#F59E0B',
     borderWidth: 1.5,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
   },
   btnLateSecondaryText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FBBF24',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F59E0B',
   },
   btnSnooze: {
-    paddingVertical: 8,
+    width: '100%',
+    height: 44,
     alignItems: 'center',
-    marginTop: 2,
+    justifyContent: 'center',
   },
   btnSnoozeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94A3B8',
-    textDecorationLine: 'underline',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#38BDF8',
   },
 });
-

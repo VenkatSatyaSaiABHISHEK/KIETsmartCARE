@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { KeyRound, ShieldCheck, CheckCircle2, X } from 'lucide-react-native';
+import { KeyRound, ShieldCheck, CheckCircle2, X, Info, Lock } from 'lucide-react-native';
 import { AuthService } from '../src/services/auth';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -45,7 +45,8 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    if (!rollNumber.trim()) {
+    const cleanRoll = rollNumber.trim().toUpperCase();
+    if (!cleanRoll) {
       setErrorMessage('Please enter your student Roll Number.');
       return;
     }
@@ -56,13 +57,17 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const result = await AuthService.login(rollNumber, password);
+      const result = await AuthService.login(cleanRoll, password);
       if (!result.success) {
         setErrorMessage(result.error || 'Invalid roll number or password.');
         return;
       }
 
-      if (result.session?.is_first_login) {
+      // Check if first-time login (password is roll number or initial seed)
+      const enteredPassUpper = password.trim().toUpperCase();
+      const isInitialPass = enteredPassUpper === cleanRoll || password === 'kiet123' || password === 'welcome' || result.session?.is_first_login;
+
+      if (isInitialPass) {
         setIsFirstLoginChange(true);
       } else if (!result.session?.has_consented) {
         router.replace('/consent');
@@ -78,8 +83,8 @@ export default function LoginScreen() {
 
   const handlePasswordChange = async () => {
     setErrorMessage(null);
-    if (newPassword.length < 8) {
-      setErrorMessage('New password must be at least 8 characters.');
+    if (newPassword.length < 6) {
+      setErrorMessage('New password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -102,7 +107,7 @@ export default function LoginScreen() {
 
   // Open Forgot Password Modal
   const openForgotModal = () => {
-    setForgotRoll(rollNumber.trim());
+    setForgotRoll(rollNumber.trim().toUpperCase());
     setForgotPhone('');
     setForgotStep('verify');
     setForgotError(null);
@@ -130,7 +135,7 @@ export default function LoginScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'verify',
-          roll_number: forgotRoll.trim(),
+          roll_number: forgotRoll.trim().toUpperCase(),
           phone: forgotPhone.trim(),
         }),
       });
@@ -138,24 +143,24 @@ export default function LoginScreen() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.success) {
-        setForgotError(data.error || 'Verification failed. Please check your details.');
+        setForgotError(data.error || 'Student verification failed. Please check your roll number and phone.');
         return;
       }
 
-      setVerifiedStudentName(data.studentName || 'Student');
+      setVerifiedStudentName(data.student_name || 'Student');
       setForgotStep('new_password');
     } catch {
-      setForgotError('Network error connecting to reset service.');
+      setForgotError('Connection error. Please try again.');
     } finally {
       setIsForgotLoading(false);
     }
   };
 
-  // Step 2: Submit New Password
-  const handleResetPassword = async () => {
+  // Step 2: Set New Password
+  const handleResetPasswordSubmit = async () => {
     setForgotError(null);
-    if (resetNewPass.length < 8) {
-      setForgotError('Password must be at least 8 characters long.');
+    if (resetNewPass.length < 6) {
+      setForgotError('New password must be at least 6 characters.');
       return;
     }
     if (resetNewPass !== resetConfirmPass) {
@@ -169,8 +174,8 @@ export default function LoginScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'reset',
-          roll_number: forgotRoll.trim(),
+          action: 'reset_password',
+          roll_number: forgotRoll.trim().toUpperCase(),
           phone: forgotPhone.trim(),
           new_password: resetNewPass,
         }),
@@ -183,261 +188,259 @@ export default function LoginScreen() {
         return;
       }
 
-      // Success: close modal and set prefilled roll
       setIsForgotModalOpen(false);
-      setRollNumber(forgotRoll.trim());
-      setPassword('');
-      setSuccessMessage(
-        `Password reset successfully for ${verifiedStudentName}! Please sign in with your new password.`
-      );
+      setSuccessMessage('Password reset successfully! Please log in with your new password.');
+      setPassword(resetNewPass);
+      setRollNumber(forgotRoll.trim().toUpperCase());
     } catch {
-      setForgotError('Network error resetting password.');
+      setForgotError('Connection error. Please try again.');
     } finally {
       setIsForgotLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header */}
-          <View style={styles.header}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/* Brand Header */}
+          <View style={styles.brandContainer}>
+            <View style={styles.logoBadge}>
+              <ShieldCheck size={28} color="#0284C7" strokeWidth={2.4} />
+            </View>
             <Text style={styles.brandTitle}>KIET SMART CARE</Text>
-            <Text style={styles.title}>Student Portal</Text>
-            <Text style={styles.subtext}>
-              {isFirstLoginChange
-                ? 'Create a secure personal password for your mobile health account.'
-                : 'Sign in using your institutional roll number and password.'}
-            </Text>
+            <Text style={styles.brandSubtitle}>Student Healthcare & Medication Alarms</Text>
           </View>
 
-          {/* Success Notification */}
-          {successMessage && (
-            <View style={styles.successBox}>
-              <CheckCircle2 size={16} color="#059669" />
-              <Text style={styles.successText}>{successMessage}</Text>
+          {/* First Login Highlight Notice */}
+          {!isFirstLoginChange && (
+            <View style={styles.firstLoginBanner}>
+              <View style={styles.firstLoginIcon}>
+                <Info size={18} color="#0284C7" />
+              </View>
+              <View style={styles.firstLoginTextWrap}>
+                <Text style={styles.firstLoginTitle}>First Time Logging In?</Text>
+                <Text style={styles.firstLoginDesc}>
+                  Your <Text style={styles.boldText}>Username</Text> is your Roll Number (e.g. 23B21A4565). Your <Text style={styles.boldText}>Initial Password</Text> is also your Roll Number. You will be prompted to set your personal password immediately.
+                </Text>
+              </View>
             </View>
           )}
 
-          {/* Error Banner */}
-          {errorMessage && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          )}
+          {/* Card Container */}
+          <View style={styles.card}>
+            {isFirstLoginChange ? (
+              // First Login Force Password Change View
+              <View>
+                <View style={styles.headerRow}>
+                  <View style={styles.headerIconCircle}>
+                    <Lock size={20} color="#0284C7" />
+                  </View>
+                  <View>
+                    <Text style={styles.formTitle}>Set Your New Password</Text>
+                    <Text style={styles.formSubtitle}>Choose a secure password for future logins</Text>
+                  </View>
+                </View>
 
-          {/* Form */}
-          {!isFirstLoginChange ? (
-            <View style={styles.form}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Roll Number</Text>
-                <TextInput
-                  style={styles.input}
-                  value={rollNumber}
-                  onChangeText={setRollNumber}
-                  placeholder="e.g. 2400290129999"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+                {errorMessage && (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
+                )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter password"
-                  secureTextEntry
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.submitBtn}
-                onPress={handleLogin}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.submitBtnText}>
-                  {isLoading ? 'Signing in...' : 'Sign In'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.forgotBtn}
-                onPress={openForgotModal}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.forgotBtnText}>Forgot password?</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.form}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>New Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="At least 8 characters"
-                  secureTextEntry
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Confirm Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Re-enter new password"
-                  secureTextEntry
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.submitBtn}
-                onPress={handlePasswordChange}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.submitBtnText}>
-                  {isLoading ? 'Updating...' : 'Set Password and Continue'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Forgot Password Modal */}
-      <Modal
-        visible={isForgotModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsForgotModalOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderIcon}>
-                <KeyRound size={20} color="#0284C7" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Reset Password</Text>
-                <Text style={styles.modalSub}>
-                  {forgotStep === 'verify'
-                    ? 'Verify identity with your roll number & registered phone.'
-                    : `Welcome ${verifiedStudentName}. Set a new secure password.`}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setIsForgotModalOpen(false)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <X size={20} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Modal Error */}
-            {forgotError && (
-              <View style={styles.modalErrorBox}>
-                <Text style={styles.modalErrorText}>{forgotError}</Text>
-              </View>
-            )}
-
-            {/* Step 1: Verification */}
-            {forgotStep === 'verify' ? (
-              <View style={styles.modalForm}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Student Roll Number</Text>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>New Password</Text>
                   <TextInput
                     style={styles.input}
-                    value={forgotRoll}
-                    onChangeText={setForgotRoll}
-                    placeholder="e.g. 2400290129999"
+                    placeholder="Enter new password (min 6 chars)"
+                    placeholderTextColor="#94A3B8"
+                    secureTextEntry
+                    value={newPassword}
+                    onChangeText={setNewPassword}
                     autoCapitalize="none"
                   />
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Registered Mobile Number</Text>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Confirm New Password</Text>
                   <TextInput
                     style={styles.input}
-                    value={forgotPhone}
-                    onChangeText={setForgotPhone}
-                    placeholder="10-digit mobile number"
-                    keyboardType="phone-pad"
+                    placeholder="Confirm new password"
+                    placeholderTextColor="#94A3B8"
+                    secureTextEntry
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    autoCapitalize="none"
                   />
-                  <Text style={styles.helperText}>
-                    Matches the phone number registered with campus clinic
-                  </Text>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.modalSubmitBtn}
-                  onPress={handleVerifyIdentity}
-                  disabled={isForgotLoading}
-                  activeOpacity={0.8}
+                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  onPress={handlePasswordChange}
+                  disabled={isLoading}
                 >
-                  {isForgotLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Verify Identity</Text>
+                    <Text style={styles.primaryButtonText}>Set Password & Continue</Text>
                   )}
                 </TouchableOpacity>
               </View>
             ) : (
-              /* Step 2: New Password */
-              <View style={styles.modalForm}>
-                <View style={styles.identitySuccessBadge}>
-                  <ShieldCheck size={16} color="#059669" />
-                  <Text style={styles.identitySuccessText}>
-                    Verified: {verifiedStudentName} ({forgotRoll})
-                  </Text>
-                </View>
+              // Standard Login Form
+              <View>
+                <Text style={styles.formTitle}>Student Sign In</Text>
+                <Text style={styles.formSubtitle}>Enter your institutional roll number</Text>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>New Password</Text>
+                {errorMessage && (
+                  <View style={styles.errorBox}>
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
+                )}
+
+                {successMessage && (
+                  <View style={styles.successBox}>
+                    <CheckCircle2 size={16} color="#059669" />
+                    <Text style={styles.successText}>{successMessage}</Text>
+                  </View>
+                )}
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Roll Number</Text>
                   <TextInput
                     style={styles.input}
-                    value={resetNewPass}
-                    onChangeText={setResetNewPass}
-                    placeholder="Minimum 8 characters"
-                    secureTextEntry
+                    placeholder="e.g. 23B21A4565"
+                    placeholderTextColor="#94A3B8"
+                    value={rollNumber}
+                    onChangeText={(txt) => setRollNumber(txt.toUpperCase())}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
                   />
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Confirm New Password</Text>
+                <View style={styles.fieldGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.label}>Password</Text>
+                    <TouchableOpacity onPress={openForgotModal}>
+                      <Text style={styles.forgotLink}>Forgot?</Text>
+                    </TouchableOpacity>
+                  </View>
                   <TextInput
                     style={styles.input}
-                    value={resetConfirmPass}
-                    onChangeText={setResetConfirmPass}
-                    placeholder="Re-enter new password"
+                    placeholder="Enter password (Roll Number if first time)"
+                    placeholderTextColor="#94A3B8"
                     secureTextEntry
+                    value={password}
+                    onChangeText={setPassword}
+                    autoCapitalize="none"
                   />
                 </View>
 
                 <TouchableOpacity
-                  style={styles.modalSubmitBtn}
-                  onPress={handleResetPassword}
-                  disabled={isForgotLoading}
-                  activeOpacity={0.8}
+                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
                 >
-                  {isForgotLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.modalSubmitBtnText}>Save New Password</Text>
+                    <Text style={styles.primaryButtonText}>Sign In</Text>
                   )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <Modal visible={isForgotModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reset Student Password</Text>
+              <TouchableOpacity onPress={() => setIsForgotModalOpen(false)}>
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {forgotError && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{forgotError}</Text>
+              </View>
+            )}
+
+            {forgotStep === 'verify' ? (
+              <View>
+                <Text style={styles.modalDesc}>
+                  Enter your roll number and registered phone number to verify your student account.
+                </Text>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Roll Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 23B21A4565"
+                    placeholderTextColor="#94A3B8"
+                    value={forgotRoll}
+                    onChangeText={(t) => setForgotRoll(t.toUpperCase())}
+                    autoCapitalize="characters"
+                  />
+                </View>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Registered Phone Number</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 9876543210"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="phone-pad"
+                    value={forgotPhone}
+                    onChangeText={setForgotPhone}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryButton, isForgotLoading && styles.disabledButton]}
+                  onPress={handleVerifyIdentity}
+                  disabled={isForgotLoading}
+                >
+                  {isForgotLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Verify Account</Text>}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.modalDesc}>
+                  Verified for <Text style={styles.boldText}>{verifiedStudentName}</Text>. Set your new password below.
+                </Text>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>New Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Min 6 characters"
+                    placeholderTextColor="#94A3B8"
+                    secureTextEntry
+                    value={resetNewPass}
+                    onChangeText={setResetNewPass}
+                  />
+                </View>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm new password"
+                    placeholderTextColor="#94A3B8"
+                    secureTextEntry
+                    value={resetConfirmPass}
+                    onChangeText={setResetConfirmPass}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.primaryButton, isForgotLoading && styles.disabledButton]}
+                  onPress={handleResetPasswordSubmit}
+                  disabled={isForgotLoading}
+                >
+                  {isForgotLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Update Password</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -449,199 +452,211 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 32,
-    paddingTop: 60,
-    paddingBottom: 40,
+    padding: 24,
     justifyContent: 'center',
+    flexGrow: 1,
   },
-  header: {
-    marginBottom: 28,
+  brandContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(2, 132, 199, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   brandTitle: {
-    fontSize: 12,
-    letterSpacing: 1,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1.2,
+  },
+  brandSubtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  firstLoginBanner: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(2, 132, 199, 0.12)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.28)',
+    padding: 14,
+    marginBottom: 18,
+    gap: 12,
+  },
+  firstLoginIcon: {
+    marginTop: 2,
+  },
+  firstLoginTextWrap: {
+    flex: 1,
+  },
+  firstLoginTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0284C7',
+    color: '#38BDF8',
     marginBottom: 4,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#121212',
-    letterSpacing: -0.4,
-  },
-  subtext: {
-    fontSize: 13,
-    color: '#555555',
-    marginTop: 6,
+  firstLoginDesc: {
+    fontSize: 12,
+    color: '#CBD5E1',
     lineHeight: 18,
+  },
+  boldText: {
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  headerIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  formSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+    marginBottom: 16,
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '500',
   },
   successBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    padding: 12,
-    borderRadius: 8,
     backgroundColor: '#ECFDF5',
-    borderWidth: 1,
     borderColor: '#A7F3D0',
-    marginBottom: 20,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
   },
   successText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#065F46',
-  },
-  errorBox: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#991B1B',
-  },
-  form: {
-    gap: 16,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  inputLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#121212',
+    color: '#059669',
+    fontWeight: '500',
   },
-  input: {
-    height: 52,
-    borderWidth: 1,
-    borderColor: '#EBEBEB',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#121212',
-    backgroundColor: '#FAFAFA',
+  fieldGroup: {
+    marginBottom: 14,
   },
-  helperText: {
-    fontSize: 11,
-    color: '#666666',
-  },
-  submitBtn: {
-    marginTop: 8,
-    height: 54,
-    borderRadius: 12,
-    backgroundColor: '#0A0A0A',
-    justifyContent: 'center',
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  submitBtnText: {
-    fontSize: 14,
+  label: {
+    fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#334155',
+    marginBottom: 6,
   },
-  forgotBtn: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  forgotBtnText: {
-    fontSize: 13,
+  forgotLink: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#0284C7',
   },
+  input: {
+    height: 48,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: '#0F172A',
+  },
+  primaryButton: {
+    height: 50,
+    backgroundColor: '#0284C7',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    borderRadius: 20,
+    padding: 22,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 16,
-  },
-  modalHeaderIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F0F9FF',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 12,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#121212',
+    color: '#0F172A',
   },
-  modalSub: {
-    fontSize: 12,
-    color: '#555555',
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  modalErrorBox: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 14,
-  },
-  modalErrorText: {
-    fontSize: 12,
-    color: '#991B1B',
-  },
-  modalForm: {
-    gap: 14,
-  },
-  modalSubmitBtn: {
-    backgroundColor: '#0284C7',
-    height: 48,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  modalSubmitBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  identitySuccessBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    borderRadius: 8,
-    padding: 10,
-  },
-  identitySuccessText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#065F46',
+  modalDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 16,
+    lineHeight: 18,
   },
 });

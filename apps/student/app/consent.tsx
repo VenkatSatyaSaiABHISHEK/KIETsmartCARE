@@ -6,10 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ShieldCheck, Bell, Zap, BatteryCharging, Check } from 'lucide-react-native';
 import { AuthService } from '../src/services/auth';
 import { StudentApi } from '../src/services/student-api';
+import { ReminderEngine } from '../src/services/reminder-engine';
+import { enableAudioAndNotifications } from '../src/services/sound-player';
 
 export default function ConsentScreen() {
   const router = useRouter();
@@ -18,12 +22,19 @@ export default function ConsentScreen() {
 
   const handleAcceptConsent = async () => {
     if (!agreed) {
-      alert('Please tap the agreement confirmation before proceeding.');
+      Alert.alert(
+        'Required Confirmation',
+        'Please review the clinical automation policies and tap the checkbox before continuing.'
+      );
       return;
     }
 
     setIsSubmitting(true);
     try {
+      // Initialize notification & audio channels
+      await ReminderEngine.init();
+      await enableAudioAndNotifications();
+
       await StudentApi.recordConsent();
       await AuthService.setConsented();
       router.replace('/setup');
@@ -37,59 +48,77 @@ export default function ConsentScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.brandTitle}>DATA GOVERNANCE & PRIVACY</Text>
-          <Text style={styles.title}>Before you continue</Text>
+          <View style={styles.badgeWrap}>
+            <ShieldCheck size={16} color="#0284C7" />
+            <Text style={styles.brandTitle}>CAMPUS CLINIC AUTOMATION</Text>
+          </View>
+          <Text style={styles.title}>System Permissions & Privacy</Text>
           <Text style={styles.subtext}>
-            KIET Smart Care coordinates campus clinical visits, local device reminders, and post-treatment recovery monitoring.
+            KIET Smart Care operates a closed-loop system ensuring you never miss a dose, even when offline or asleep.
           </Text>
         </View>
 
-        {/* Plain Text Disclosure */}
-        <View style={styles.termsContent}>
-          <Text style={styles.termsParagraph}>
-            1. <Text style={styles.bold}>Zero Manual Alarm Setting:</Text> You do not need to manually create phone alarms. Whenever an OPD doctor issues a prescription, KIET Smart Care automatically sets high-precision scheduled alarms and notifications synchronized with your meal schedule.
-          </Text>
+        {/* Feature Cards */}
+        <View style={styles.featureList}>
+          <View style={styles.featureCard}>
+            <View style={styles.featureIcon}>
+              <Zap size={20} color="#0284C7" />
+            </View>
+            <View style={styles.featureBody}>
+              <Text style={styles.featureTitle}>Zero Manual Alarms</Text>
+              <Text style={styles.featureDesc}>
+                Whenever the OPD doctor prescribes medicine, the system automatically schedules offline device alarms tied to your personalized meal timings.
+              </Text>
+            </View>
+          </View>
 
-          <Text style={styles.termsParagraph}>
-            2. <Text style={styles.bold}>Sound & Background Execution:</Text> Scheduled reminders play a gentle clinical chime (<Text style={styles.italic}>chime_reminder.wav</Text>) and high-priority vibration even when the app is completely closed or your phone is locked.
-          </Text>
+          <View style={styles.featureCard}>
+            <View style={styles.featureIcon}>
+              <Bell size={20} color="#059669" />
+            </View>
+            <View style={styles.featureBody}>
+              <Text style={styles.featureTitle}>High-Priority Alarms & Sound</Text>
+              <Text style={styles.featureDesc}>
+                Scheduled alarms play an audible chime sound and vibrate. The full-screen alarm screen rings continuously until marked taken or snoozed.
+              </Text>
+            </View>
+          </View>
 
-          <Text style={styles.termsParagraph}>
-            3. <Text style={styles.bold}>Action Buttons Without Opening the App:</Text> You can record your adherence directly from the lock-screen notification (<Text style={styles.italic}>Taken</Text>, <Text style={styles.italic}>Taken Late</Text>, or <Text style={styles.italic}>Not Taken</Text>) without launching the app. Responses queue locally if offline and sync automatically.
-          </Text>
-
-          <Text style={styles.termsParagraph}>
-            4. <Text style={styles.bold}>Clinical Data Privacy:</Text> Your prescriptions and recovery telemetry are accessible only to authorized campus OPD doctors and triage health officers. General administrative staff have zero access to your medical diagnoses or treatment notes.
-          </Text>
-
-          <Text style={styles.termsParagraph}>
-            5. <Text style={styles.bold}>Safety Invariant:</Text> The system strictly enforces the clinical protocol: if a dose is missed, you will be notified to resume your normal schedule and never double up.
-          </Text>
+          <View style={styles.featureCard}>
+            <View style={styles.featureIcon}>
+              <BatteryCharging size={20} color="#D97706" />
+            </View>
+            <View style={styles.featureBody}>
+              <Text style={styles.featureTitle}>Background & Lock-Screen Adherence</Text>
+              <Text style={styles.featureDesc}>
+                Reminders arrive on your lock screen with 1-tap action buttons (<Text style={styles.bold}>Taken</Text>, <Text style={styles.bold}>Taken Late</Text>, <Text style={styles.bold}>Missed</Text>) without opening the app.
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Checkbox Tap */}
+        {/* Agreement Checkbox */}
         <TouchableOpacity
-          style={styles.checkboxRow}
-          onPress={() => setAgreed(!agreed)}
+          style={styles.checkboxContainer}
           activeOpacity={0.8}
+          onPress={() => setAgreed(!agreed)}
         >
-          <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
-            {agreed && <Text style={styles.checkMark}>✓</Text>}
+          <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+            {agreed && <Check size={16} color="#FFFFFF" strokeWidth={3} />}
           </View>
           <Text style={styles.checkboxLabel}>
-            I consent to campus clinical telemetry and authorize KIET Smart Care to automatically schedule medicine alarms with sound on this device.
+            I understand and authorize KIET Smart Care to schedule medical reminders and play audible chime alarms for my prescribed treatments.
           </Text>
         </TouchableOpacity>
 
-        {/* Agree Button */}
+        {/* Continue Button */}
         <TouchableOpacity
-          style={[styles.continueBtn, !agreed && styles.continueBtnDisabled]}
+          style={[styles.continueButton, !agreed && styles.buttonDisabled]}
           onPress={handleAcceptConsent}
-          disabled={isSubmitting || !agreed}
-          activeOpacity={0.8}
+          disabled={isSubmitting}
         >
-          <Text style={styles.continueBtnText}>
-            {isSubmitting ? 'Saving...' : 'I Agree to the Above Terms'}
+          <Text style={styles.continueButtonText}>
+            {isSubmitting ? 'Configuring System...' : 'Allow & Continue'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -100,97 +129,126 @@ export default function ConsentScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
   },
   scrollContent: {
     padding: 24,
     paddingBottom: 40,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  badgeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
   brandTitle: {
     fontSize: 11,
-    letterSpacing: 1,
     fontWeight: '700',
-    color: '#555555',
-    marginBottom: 4,
+    color: '#0284C7',
+    letterSpacing: 1.2,
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#121212',
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
   },
   subtext: {
     fontSize: 14,
-    color: '#555555',
-    marginTop: 6,
+    color: '#64748B',
     lineHeight: 20,
   },
-  termsContent: {
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#EBEBEB',
-    paddingVertical: 20,
-    gap: 16,
+  featureList: {
+    gap: 12,
     marginBottom: 24,
   },
-  termsParagraph: {
+  featureCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 14,
+  },
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureBody: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  featureDesc: {
     fontSize: 13,
-    color: '#333333',
-    lineHeight: 19,
+    color: '#64748B',
+    lineHeight: 18,
   },
   bold: {
     fontWeight: '700',
-    color: '#121212',
+    color: '#334155',
   },
-  italic: {
-    fontStyle: 'italic',
-  },
-  checkboxRow: {
+  checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 24,
     gap: 12,
-    marginBottom: 28,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#AAAAAA',
-    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#94A3B8',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 2,
   },
-  checkboxActive: {
-    backgroundColor: '#121212',
-    borderColor: '#121212',
-  },
-  checkMark: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
+  checkboxChecked: {
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
   },
   checkboxLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#333333',
-    lineHeight: 18,
+    color: '#334155',
+    lineHeight: 19,
   },
-  continueBtn: {
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#0A0A0A',
-    justifyContent: 'center',
+  continueButton: {
+    height: 52,
+    backgroundColor: '#0284C7',
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  continueBtnDisabled: {
-    opacity: 0.35,
+  buttonDisabled: {
+    opacity: 0.5,
   },
-  continueBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+  continueButtonText: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

@@ -21,3 +21,45 @@ export const EMERGENCY_CONTACTS = {
   OPD_DOCTOR: '+91-9876543211',
 };
 
+/**
+ * Format any ISO timestamp or HH:mm time string into friendly 12-hour AM/PM format (Asia/Kolkata / Local Time).
+ * Handles:
+ * - ISO string: "2026-11-03T01:50:00.000Z" -> "07:20 AM"
+ * - 24h string: "13:20" -> "01:20 PM"
+ * - "07:20" -> "07:20 AM"
+ */
+export function formatTime12h(timeOrIso?: string | null): string {
+  if (!timeOrIso) return '--:--';
+
+  // 1. If it's an ISO timestamp (e.g. contains 'T' or 'Z' or '-')
+  if (timeOrIso.includes('T') || timeOrIso.includes('-') || timeOrIso.includes('Z')) {
+    const d = new Date(timeOrIso);
+    if (!isNaN(d.getTime())) {
+      let hours = d.getHours();
+      const minutes = d.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 hour should be 12
+      const strH = hours < 10 ? `0${hours}` : `${hours}`;
+      const strM = minutes < 10 ? `0${minutes}` : `${minutes}`;
+      return `${strH}:${strM} ${ampm}`;
+    }
+  }
+
+  // 2. If it's a 24-hour "HH:MM" or "HH:MM:SS" time string
+  if (timeOrIso.includes(':')) {
+    const parts = timeOrIso.split(':').map((p) => parseInt(p, 10));
+    if (!isNaN(parts[0]) && !isNaN(parts[1])) {
+      let hours = parts[0];
+      const minutes = parts[1];
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const strH = hours < 10 ? `0${hours}` : `${hours}`;
+      const strM = minutes < 10 ? `0${minutes}` : `${minutes}`;
+      return `${strH}:${strM} ${ampm}`;
+    }
+  }
+
+  return timeOrIso;
+}
