@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -18,6 +18,15 @@ import { AuthService } from '../src/services/auth';
 import { WobnimoMascot, WobnimoState } from '../src/components/WobnimoMascot';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+const PLAYFUL_IDLE_CYCLE: WobnimoState[] = [
+  'idle',
+  'surprised',
+  'thinking',
+  'speaking',
+  'celebrating',
+  'listening',
+];
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -45,8 +54,19 @@ export default function LoginScreen() {
 
   // Wobnimo animated mascot state
   const [mascotState, setMascotState] = useState<WobnimoState>('idle');
+  const idleIndexRef = useRef(0);
 
-  // React to student actions
+  // User activity tracker
+  const isUserActive =
+    isLoading ||
+    isForgotLoading ||
+    Boolean(errorMessage) ||
+    Boolean(forgotError) ||
+    Boolean(successMessage) ||
+    rollNumber.length > 0 ||
+    password.length > 0;
+
+  // React to student actions immediately
   useEffect(() => {
     if (isLoading || isForgotLoading) {
       setMascotState('working');
@@ -56,10 +76,20 @@ export default function LoginScreen() {
       setMascotState('celebrating');
     } else if (rollNumber.length > 0 || password.length > 0) {
       setMascotState('listening');
-    } else {
-      setMascotState('idle');
     }
   }, [isLoading, isForgotLoading, errorMessage, forgotError, successMessage, rollNumber, password]);
+
+  // Automatic state rotation every 3.5 seconds when student is idle
+  useEffect(() => {
+    if (isUserActive) return;
+
+    const interval = setInterval(() => {
+      idleIndexRef.current = (idleIndexRef.current + 1) % PLAYFUL_IDLE_CYCLE.length;
+      setMascotState(PLAYFUL_IDLE_CYCLE[idleIndexRef.current]);
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [isUserActive]);
 
   const handleLogin = async () => {
     setErrorMessage(null);
@@ -225,6 +255,7 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
         style={styles.keyboardView}
       >
         <ScrollView
@@ -357,9 +388,9 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* Wobnimo Mascot Animated in the lower white space */}
+          {/* Larger Wobnimo Mascot at the bottom */}
           <View style={styles.mascotContainer}>
-            <WobnimoMascot character="boo" state={mascotState} size={110} />
+            <WobnimoMascot character="boo" state={mascotState} size={170} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -484,12 +515,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 32,
-    paddingTop: 60,
-    paddingBottom: 24,
+    paddingTop: 50,
+    paddingBottom: 20,
     justifyContent: 'center',
+    flexGrow: 1,
   },
   header: {
-    marginBottom: 28,
+    marginBottom: 26,
   },
   brandTitle: {
     fontSize: 12,
@@ -519,7 +551,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECFDF5',
     borderWidth: 1,
     borderColor: '#A7F3D0',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   successText: {
     flex: 1,
@@ -533,14 +565,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   errorText: {
     fontSize: 12,
     color: '#991B1B',
   },
   form: {
-    gap: 16,
+    gap: 15,
   },
   inputGroup: {
     gap: 6,
@@ -561,8 +593,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
   },
   submitBtn: {
-    marginTop: 8,
-    height: 54,
+    marginTop: 6,
+    height: 52,
     borderRadius: 12,
     backgroundColor: '#0A0A0A',
     justifyContent: 'center',
@@ -575,7 +607,7 @@ const styles = StyleSheet.create({
   },
   forgotBtn: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   forgotBtnText: {
     fontSize: 13,
@@ -584,8 +616,8 @@ const styles = StyleSheet.create({
   },
   reminderFootnote: {
     alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 10,
+    marginTop: 6,
+    marginBottom: 8,
     paddingHorizontal: 8,
   },
   reminderFootnoteText: {
@@ -597,8 +629,8 @@ const styles = StyleSheet.create({
   mascotContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
-    height: 120,
+    marginTop: 10,
+    height: 180,
   },
   modalOverlay: {
     flex: 1,

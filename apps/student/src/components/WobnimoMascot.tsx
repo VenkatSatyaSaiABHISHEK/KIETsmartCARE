@@ -23,13 +23,12 @@ interface WobnimoMascotProps {
 export function WobnimoMascot({
   character = 'boo',
   state = 'idle',
-  size = 130,
+  size = 175,
 }: WobnimoMascotProps) {
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web' && webViewRef.current) {
-      // Send message to update mascot state dynamically
       const script = `
         if (window.mascotEl) {
           window.mascotEl.setAttribute('state', '${state}');
@@ -37,6 +36,11 @@ export function WobnimoMascot({
         true;
       `;
       webViewRef.current.injectJavaScript(script);
+    } else if (Platform.OS === 'web') {
+      const el = document.getElementById('web-wobnimo-mascot');
+      if (el) {
+        el.setAttribute('state', state);
+      }
     }
   }, [state]);
 
@@ -61,6 +65,7 @@ export function WobnimoMascot({
             width: 100%;
             height: 100%;
             display: block;
+            background: transparent !important;
           }
         </style>
       </head>
@@ -77,6 +82,7 @@ export function WobnimoMascot({
     return (
       <View style={[styles.container, { width: size, height: size }]}>
         <iframe
+          id="web-mascot-frame"
           srcDoc={html}
           style={{
             width: size,
@@ -121,4 +127,3 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 });
-
