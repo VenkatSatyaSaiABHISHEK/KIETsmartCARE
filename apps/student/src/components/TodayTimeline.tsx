@@ -1,16 +1,6 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, Text, View, Platform } from 'react-native';
-import {
-  Sun,
-  Sunset,
-  Moon,
-  Coffee,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  HelpCircle,
-  Pill,
-} from 'lucide-react-native';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Sun, Sunset, Moon } from 'lucide-react-native';
 import { DoseScheduleRecord } from '../types/student';
 import { formatTime12h } from '../constants/shared';
 
@@ -19,410 +9,189 @@ interface TodayTimelineProps {
   onAnswerDose?: (doseId: string, status: 'taken' | 'taken_late' | 'not_taken') => void;
 }
 
-interface MealGroup {
-  key: string;
-  slotName: string;
-  timeDisplay: string;
-  mealRelation: string;
-  doses: DoseScheduleRecord[];
-  status: 'taken' | 'taken_late' | 'not_taken' | 'upcoming' | 'unconfirmed';
-  isNextDue: boolean;
-}
-
 export function TodayTimeline({ doses }: TodayTimelineProps) {
-  // Group doses by scheduled time & meal slot
-  const mealGroups: MealGroup[] = useMemo(() => {
-    if (!doses || doses.length === 0) return [];
-
-    const map = new Map<string, DoseScheduleRecord[]>();
-
-    doses.forEach((d) => {
-      const timeStr = d.scheduled_at || d.time || d.scheduled_time || '08:00';
-      const slot = (d.slot || d.meal_slot || 'morning').toLowerCase();
-      const groupKey = `${slot}_${timeStr}`;
-
-      if (!map.has(groupKey)) {
-        map.set(groupKey, []);
-      }
-      map.get(groupKey)!.push(d);
-    });
-
-    let foundNextDue = false;
-
-    return Array.from(map.entries()).map(([key, groupDoses]) => {
-      const first = groupDoses[0];
-      const rawSlot = (first.slot || first.meal_slot || 'morning').toLowerCase();
-
-      let slotLabel = 'Morning';
-      if (rawSlot.includes('lunch') || rawSlot.includes('afternoon')) slotLabel = 'Afternoon';
-      else if (rawSlot.includes('evening')) slotLabel = 'Evening';
-      else if (rawSlot.includes('night') || rawSlot.includes('dinner')) slotLabel = 'Night';
-      else if (rawSlot.includes('breakfast')) slotLabel = 'Morning';
-      else slotLabel = rawSlot.charAt(0).toUpperCase() + rawSlot.slice(1);
-
-      const timeDisplay = formatTime12h(first.scheduled_at || first.time || first.scheduled_time);
-      const mealRelation = first.meal_relation === 'before' ? 'Before food' : 'After food';
-
-      // Determine collective status for this group
-      const allTaken = groupDoses.every((d) => d.status === 'taken');
-      const anyLate = groupDoses.some((d) => d.status === 'taken_late');
-      const anyMissed = groupDoses.some((d) => d.status === 'not_taken');
-      const anyUnconfirmed = groupDoses.some((d) => d.status === 'unconfirmed');
-
-      let groupStatus: MealGroup['status'] = 'upcoming';
-      if (allTaken) groupStatus = 'taken';
-      else if (anyLate) groupStatus = 'taken_late';
-      else if (anyMissed) groupStatus = 'not_taken';
-      else if (anyUnconfirmed) groupStatus = 'unconfirmed';
-
-      let isNextDue = false;
-      if (!foundNextDue && (groupStatus === 'upcoming' || groupStatus === 'unconfirmed')) {
-        isNextDue = true;
-        foundNextDue = true;
-      }
-
-      return {
-        key,
-        slotName: slotLabel,
-        timeDisplay,
-        mealRelation,
-        doses: groupDoses,
-        status: groupStatus,
-        isNextDue,
-      };
-    });
-  }, [doses]);
-
-  const getSlotIcon = (slotName: string, size = 18) => {
-    const s = slotName.toLowerCase();
-    if (s.includes('morning')) return <Sun size={size} color="#D97706" />;
-    if (s.includes('afternoon')) return <Sunset size={size} color="#0284C7" />;
-    if (s.includes('evening')) return <Coffee size={size} color="#7C3AED" />;
-    return <Moon size={size} color="#3B82F6" />;
-  };
-
-  const getStatusBadge = (status: MealGroup['status'], isNextDue: boolean) => {
-    if (status === 'taken') {
-      return (
-        <View style={[styles.badge, styles.badgeTaken]}>
-          <CheckCircle2 size={12} color="#166534" />
-          <Text style={styles.badgeTextTaken}>All Taken</Text>
-        </View>
-      );
-    }
-    if (status === 'taken_late') {
-      return (
-        <View style={[styles.badge, styles.badgeLate]}>
-          <Clock size={12} color="#854D0E" />
-          <Text style={styles.badgeTextLate}>Taken Late</Text>
-        </View>
-      );
-    }
-    if (status === 'not_taken') {
-      return (
-        <View style={[styles.badge, styles.badgeMissed]}>
-          <AlertCircle size={12} color="#991B1B" />
-          <Text style={styles.badgeTextMissed}>Missed</Text>
-        </View>
-      );
-    }
-    if (isNextDue) {
-      return (
-        <View style={[styles.badge, styles.badgeNextDue]}>
-          <Clock size={12} color="#1D4ED8" />
-          <Text style={styles.badgeTextNextDue}>Next Due</Text>
-        </View>
-      );
-    }
+  if (!doses || doses.length === 0) {
     return (
-      <View style={[styles.badge, styles.badgeUpcoming]}>
-        <Clock size={12} color="#64748B" />
-        <Text style={styles.badgeTextUpcoming}>Upcoming</Text>
-      </View>
-    );
-  };
-
-  if (mealGroups.length === 0) {
-    return (
-      <View style={styles.emptyCard}>
-        <CheckCircle2 size={28} color="#059669" />
-        <Text style={styles.emptyTitle}>No Doses Scheduled for Today</Text>
-        <Text style={styles.emptySubtitle}>
-          You have no pending medication doses. Stay healthy and well hydrated!
-        </Text>
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No doses scheduled for today.</Text>
       </View>
     );
   }
 
+  // Current time in Asia/Kolkata (HH:MM)
+  const now = new Date();
+  const istMinutes = (now.getUTCHours() * 60 + now.getUTCMinutes() + 330) % 1440; // IST offset +5:30
+
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.heading}>TODAY&apos;S SCHEDULE</Text>
-        <Text style={styles.subheading}>{mealGroups.length} meal sessions</Text>
-      </View>
+      {doses.map((d, index) => {
+        // 1. Map to strictly 3 slots: Morning, Afternoon, Night (no Evening)
+        const rawSlot = (d.slot || d.meal_slot || 'morning').toLowerCase();
+        let slotName: 'Morning' | 'Afternoon' | 'Night' = 'Morning';
+        if (rawSlot.includes('lunch') || rawSlot.includes('afternoon') || rawSlot.includes('evening') || rawSlot.includes('tea')) {
+          // If raw slot is late evening (e.g. 7pm+), map to Night, otherwise Afternoon
+          const timeStr = d.scheduled_at || d.time || d.scheduled_time || '13:00';
+          const hourMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+          const hour = hourMatch ? parseInt(hourMatch[1], 10) : 13;
+          slotName = hour >= 19 ? 'Night' : 'Afternoon';
+        } else if (rawSlot.includes('night') || rawSlot.includes('dinner')) {
+          slotName = 'Night';
+        } else {
+          slotName = 'Morning';
+        }
 
-      <View style={styles.groupList}>
-        {mealGroups.map((group) => {
-          return (
-            <View
-              key={group.key}
-              style={[
-                styles.mealCard,
-                group.isNextDue && styles.mealCardActive,
-                group.status === 'taken' && styles.mealCardTaken,
-              ]}
-            >
-              {/* Highlight bar for next due */}
-              {group.isNextDue && <View style={styles.activeBar} />}
+        // 2. Scheduled time display (12-hour AM/PM)
+        const rawTime = d.scheduled_at || d.time || d.scheduled_time || '08:00';
+        const displayTime = formatTime12h(rawTime);
 
-              {/* Card Header: Slot Icon + Title + Time + Badge */}
-              <View style={styles.cardHeader}>
-                <View style={styles.slotInfoLeft}>
-                  <View style={styles.iconCircle}>{getSlotIcon(group.slotName)}</View>
-                  <View>
-                    <Text style={styles.slotTitle}>{group.slotName} Session</Text>
-                    <Text style={styles.slotTimeSubtext}>
-                      {group.timeDisplay} • {group.mealRelation}
-                    </Text>
-                  </View>
-                </View>
-                {getStatusBadge(group.status, group.isNextDue)}
+        // 3. Check if scheduled time has passed
+        let isPastTime = false;
+        const timeMatch = rawTime.match(/(\d{1,2}):(\d{2})/);
+        if (timeMatch) {
+          const doseMinutes = parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+          // If past scheduled time by 15+ minutes
+          if (istMinutes > doseMinutes + 15) {
+            isPastTime = true;
+          }
+        }
+
+        // 4. Status determination (Auto-missed if elapsed without confirmation)
+        let effectiveStatus = d.status;
+        if (effectiveStatus !== 'taken' && effectiveStatus !== 'taken_late') {
+          if (isPastTime || effectiveStatus === 'not_taken') {
+            effectiveStatus = 'not_taken';
+          }
+        }
+
+        const isTaken = effectiveStatus === 'taken';
+        const isLate = effectiveStatus === 'taken_late';
+        const isMissed = effectiveStatus === 'not_taken';
+
+        const statusLabel = isTaken
+          ? 'Taken'
+          : isLate
+          ? 'Taken Late'
+          : isMissed
+          ? 'Missed'
+          : 'Upcoming';
+
+        const statusColor = isTaken
+          ? '#166534' // Forest green
+          : isLate
+          ? '#854D0E' // Amber
+          : isMissed
+          ? '#991B1B' // Red
+          : '#6B7280'; // Neutral grey
+
+        const mealRelation = d.meal_relation === 'before' ? 'Before food' : 'After food';
+        const doseText = d.tablets
+          ? `${d.tablets} tablet${d.tablets > 1 ? 's' : ''}`
+          : d.dose || '1 tablet';
+
+        return (
+          <View key={d.id || `dose-${index}`} style={styles.row}>
+            {/* Left: Icon + Time + Slot */}
+            <View style={styles.timeCol}>
+              <View style={styles.iconCircle}>
+                {slotName === 'Morning' && <Sun size={15} color="#D97706" />}
+                {slotName === 'Afternoon' && <Sunset size={15} color="#0284C7" />}
+                {slotName === 'Night' && <Moon size={15} color="#4F46E5" />}
               </View>
-
-              {/* Medicine items in this session */}
-              <View style={styles.medsContainer}>
-                {group.doses.map((d, dIdx) => (
-                  <View
-                    key={d.id || dIdx}
-                    style={[
-                      styles.medItemRow,
-                      dIdx > 0 && styles.medItemBorder,
-                    ]}
-                  >
-                    <View style={styles.medLeft}>
-                      <Pill size={15} color="#0F1B33" />
-                      <Text style={styles.medicineNameText}>{d.medicine_name}</Text>
-                    </View>
-                    <View style={styles.dosePill}>
-                      <Text style={styles.dosePillText}>
-                        {d.tablets ? `${d.tablets} tablet${d.tablets > 1 ? 's' : ''}` : d.dose || '1 tablet'}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
+              <View>
+                <Text style={styles.timeText}>{displayTime}</Text>
+                <Text style={styles.slotText}>
+                  {slotName} &bull; {mealRelation}
+                </Text>
               </View>
             </View>
-          );
-        })}
-      </View>
+
+            {/* Middle: Medicine Name & Tablets */}
+            <View style={styles.medCol}>
+              <Text style={styles.medName} numberOfLines={1}>
+                {d.medicine_name || 'Prescribed Medicine'}
+              </Text>
+              <Text style={styles.doseSubtext}>{doseText}</Text>
+            </View>
+
+            {/* Right: Status text */}
+            <View style={styles.statusCol}>
+              <Text style={[styles.statusText, { color: statusColor }]}>
+                {statusLabel}
+              </Text>
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 20,
-    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
-  headerRow: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  heading: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-  },
-  subheading: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
-  groupList: {
-    gap: 12,
-  },
-  mealCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    position: 'relative',
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0F1B33',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0 2px 8px rgba(15,27,51,0.04)',
-      },
-    }),
-  },
-  mealCardActive: {
-    borderColor: '#1D4ED8',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-  },
-  mealCardTaken: {
-    backgroundColor: '#FAFDFB',
-    borderColor: '#DCFCE7',
-  },
-  activeBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 4,
-    backgroundColor: '#1D4ED8',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E7EB',
+    minHeight: 48,
   },
-  slotInfoLeft: {
+  timeCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    width: 120,
+    gap: 8,
   },
   iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  slotTitle: {
-    fontSize: 15,
+  timeText: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#0F1B33',
+    fontVariant: ['tabular-nums'],
   },
-  slotTimeSubtext: {
-    fontSize: 12,
+  slotText: {
+    fontSize: 10,
     color: '#6B7280',
     marginTop: 1,
   },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  badgeTaken: {
-    backgroundColor: '#DCFCE7',
-  },
-  badgeTextTaken: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#166534',
-  },
-  badgeLate: {
-    backgroundColor: '#FEF9C3',
-  },
-  badgeTextLate: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#854D0E',
-  },
-  badgeMissed: {
-    backgroundColor: '#FEE2E2',
-  },
-  badgeTextMissed: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#991B1B',
-  },
-  badgeNextDue: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  badgeTextNextDue: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
-  badgeUpcoming: {
-    backgroundColor: '#F1F5F9',
-  },
-  badgeTextUpcoming: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  medsContainer: {
-    paddingTop: 10,
-  },
-  medItemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  medItemBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#F8FAFC',
-  },
-  medLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  medCol: {
     flex: 1,
-  },
-  medicineNameText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  dosePill: {
-    backgroundColor: '#F3F4F6',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
   },
-  dosePillText: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  medName: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#0F1B33',
-    marginTop: 10,
   },
-  emptySubtitle: {
+  doseSubtext: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  statusCol: {
+    alignItems: 'flex-end',
+    minWidth: 64,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
     fontSize: 13,
     color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 18,
   },
 });

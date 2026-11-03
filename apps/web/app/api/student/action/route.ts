@@ -91,6 +91,24 @@ export async function POST(req: NextRequest) {
         })
         .eq("id", dose_id);
 
+      // Check if all scheduled doses for this student are now completed
+      if (resolvedStudentId) {
+        const { data: pendingDoses } = await supabase
+          .from("dose_schedule")
+          .select("id")
+          .eq("student_id", resolvedStudentId)
+          .eq("status", "scheduled");
+
+        if (!pendingDoses || pendingDoses.length === 0) {
+          // All doses completed -> mark active visit as completed ("done")
+          await supabase
+            .from("visits")
+            .update({ status: "completed", updated_at: new Date().toISOString() })
+            .eq("student_id", resolvedStudentId)
+            .eq("status", "active");
+        }
+      }
+
       return NextResponse.json(
         {
           success: true,

@@ -283,7 +283,13 @@ export class StudentApi {
             const dateObj = new Date(d.scheduled_at);
             const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const latestEvent = d.dose_events && d.dose_events.length > 0 ? d.dose_events[0] : null;
-            const effectiveStatus = latestEvent?.response || d.status || 'scheduled';
+            let effectiveStatus = latestEvent?.response || d.status || 'scheduled';
+            if (effectiveStatus !== 'taken' && effectiveStatus !== 'taken_late') {
+              // If dose was scheduled in the past by > 15 minutes and not responded, auto-mark as not_taken (Missed)
+              if (dateObj.getTime() + 15 * 60 * 1000 < Date.now()) {
+                effectiveStatus = 'not_taken';
+              }
+            }
 
             return {
               id: d.id,
@@ -346,6 +352,22 @@ export class StudentApi {
             response: adherenceResponse,
             responded_at: new Date().toISOString(),
           });
+
+        // Check if all scheduled doses for this student have been completed
+        const { data: pendingDoses } = await supabase
+          .from('dose_schedule')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('status', 'scheduled');
+
+        if (!pendingDoses || pendingDoses.length === 0) {
+          // All doses completed -> mark active visit as completed
+          await supabase
+            .from('visits')
+            .update({ status: 'completed' })
+            .eq('student_id', studentId)
+            .eq('status', 'active');
+        }
       }
     } catch (dbErr) {
       console.warn('Direct Supabase submitDoseAnswer error:', dbErr);

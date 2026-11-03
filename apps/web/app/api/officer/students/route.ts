@@ -94,8 +94,8 @@ export async function GET(req: NextRequest) {
         current_status = "No response";
       } else if (openAlertStudentIds.has(s.id)) {
         current_status = "Needs attention";
-      } else if (v.status === "recovered") {
-        current_status = "Recovered";
+      } else if (v.status === "recovered" || v.status === "completed") {
+        current_status = "Completed";
       } else if (v.status === "not_recovered") {
         current_status = "Not recovered";
       }

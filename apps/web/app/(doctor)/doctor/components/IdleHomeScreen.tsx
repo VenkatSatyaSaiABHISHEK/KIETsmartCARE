@@ -341,9 +341,9 @@ export function IdleHomeScreen({
                   let dotColor = "bg-[#D97706]";
                   let statusWord = "Under treatment";
 
-                  if (p.status === "recovered") {
+                  if (p.status === "recovered" || p.status === "completed") {
                     dotColor = "bg-[#059669]";
-                    statusWord = "Recovered";
+                    statusWord = "Completed";
                   } else if (p.status === "needs_attention" || p.status === "not_recovered") {
                     dotColor = "bg-[#B91C1C]";
                     statusWord = "Needs attention";
