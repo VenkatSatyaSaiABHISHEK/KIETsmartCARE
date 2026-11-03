@@ -26,105 +26,155 @@ export function AlarmTakeoverModal({
   onSnooze,
   onDismiss,
 }: AlarmTakeoverModalProps) {
+  // Ultra-smooth physics animations
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const rippleAnim = useRef(new Animated.Value(1)).current;
-  const rippleOpacity = useRef(new Animated.Value(0.8)).current;
+  const rippleAnim1 = useRef(new Animated.Value(1)).current;
+  const rippleAnim2 = useRef(new Animated.Value(1)).current;
+  const rippleOpacity1 = useRef(new Animated.Value(0.7)).current;
+  const rippleOpacity2 = useRef(new Animated.Value(0.5)).current;
+  const bellShake = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      // Continuous pulse animation for the ringing bell
+      // 1. Central Heartbeat Pulse
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.18,
-            duration: 400,
+            toValue: 1.15,
+            duration: 500,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 0.95,
-            duration: 300,
+            duration: 350,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 300,
+            duration: 350,
             useNativeDriver: true,
           }),
         ])
       );
 
-      // Expanding radar ripple ring
-      const rippleLoop = Animated.loop(
+      // 2. Bell energetic ring shake
+      const shakeLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(bellShake, { toValue: 8, duration: 60, useNativeDriver: true }),
+          Animated.timing(bellShake, { toValue: -8, duration: 60, useNativeDriver: true }),
+          Animated.timing(bellShake, { toValue: 6, duration: 60, useNativeDriver: true }),
+          Animated.timing(bellShake, { toValue: -6, duration: 60, useNativeDriver: true }),
+          Animated.timing(bellShake, { toValue: 0, duration: 60, useNativeDriver: true }),
+          Animated.delay(600),
+        ])
+      );
+
+      // 3. Double Sonic Waves
+      const waveLoop1 = Animated.loop(
         Animated.parallel([
-          Animated.timing(rippleAnim, {
-            toValue: 2.2,
-            duration: 1200,
+          Animated.timing(rippleAnim1, {
+            toValue: 2.4,
+            duration: 1400,
             useNativeDriver: true,
           }),
-          Animated.timing(rippleOpacity, {
+          Animated.timing(rippleOpacity1, {
             toValue: 0,
-            duration: 1200,
+            duration: 1400,
             useNativeDriver: true,
           }),
+        ])
+      );
+
+      const waveLoop2 = Animated.loop(
+        Animated.sequence([
+          Animated.delay(400),
+          Animated.parallel([
+            Animated.timing(rippleAnim2, {
+              toValue: 2.2,
+              duration: 1400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(rippleOpacity2, {
+              toValue: 0,
+              duration: 1400,
+              useNativeDriver: true,
+            }),
+          ]),
         ])
       );
 
       pulseLoop.start();
-      rippleLoop.start();
+      shakeLoop.start();
+      waveLoop1.start();
+      waveLoop2.start();
 
       return () => {
         pulseLoop.stop();
-        rippleLoop.stop();
+        shakeLoop.stop();
+        waveLoop1.stop();
+        waveLoop2.stop();
       };
     }
   }, [visible]);
 
   if (!visible || !dose) return null;
 
-  // Format 12-hour AM/PM string accurately from scheduled_at ISO timestamp or time string
   const displayTime = formatTime12h(dose.scheduled_at || dose.time || dose.scheduled_time);
-  const medName = dose.medicine_name || 'Prescribed Tablet';
-  const doseText = dose.tablets ? `${dose.tablets} tablet` : dose.dose || '1 tablet';
+  const medName = dose.medicine_name || 'Prescribed Medicine';
+  const doseText = dose.tablets ? `${dose.tablets} tablet${dose.tablets > 1 ? 's' : ''}` : dose.dose || '1 tablet';
   const mealRelation = dose.meal_relation === 'after' ? 'After food' : 'Before food';
 
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType="slide"
       transparent={false}
       statusBarTranslucent
     >
       <View style={styles.fullscreenContainer}>
-        {/* Subtle dismiss in top corner */}
+        {/* Top Header Dismiss */}
         <TouchableOpacity
           style={styles.closeCornerBtn}
           onPress={onDismiss}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          activeOpacity={0.7}
         >
           <X size={22} color="#94A3B8" />
         </TouchableOpacity>
 
-        {/* Top Header Tag - Notice clean bullet symbol • without literal \\u2022 */}
-        <View style={styles.tagWrap}>
-          <Volume2 size={14} color="#38BDF8" />
-          <Text style={styles.tagText}>CAMPUS CLINIC • MEDICINE ALARM</Text>
+        {/* Dynamic Medical Brand Tag */}
+        <View style={styles.topStage}>
+          <View style={styles.alarmBadge}>
+            <Volume2 size={15} color="#38BDF8" />
+            <Text style={styles.alarmBadgeText}>CAMPUS CLINIC • MEDICINE ALARM</Text>
+          </View>
+
+          {/* Time with Glow Typography */}
+          <Text style={styles.bigTimeText}>{displayTime}</Text>
+          <Text style={styles.reminderNoticeText}>SCHEDULED DOSE TIME HAS ARRIVED</Text>
         </View>
 
-        {/* Big Time Display */}
-        <Text style={styles.bigTimeText}>{displayTime}</Text>
-        <Text style={styles.reminderNoticeText}>SCHEDULED TIME HAS ARRIVED</Text>
-
-        {/* Central Animated Ringing Bell */}
+        {/* Hero Animated Sound Bell Stage */}
         <View style={styles.bellCenterStage}>
           <Animated.View
             style={[
               styles.radarRipple,
               {
-                transform: [{ scale: rippleAnim }],
-                opacity: rippleOpacity,
+                transform: [{ scale: rippleAnim1 }],
+                opacity: rippleOpacity1,
               },
             ]}
           />
+          <Animated.View
+            style={[
+              styles.radarRippleSecondary,
+              {
+                transform: [{ scale: rippleAnim2 }],
+                opacity: rippleOpacity2,
+              },
+            ]}
+          />
+
           <Animated.View
             style={[
               styles.bellGlowCircle,
@@ -133,15 +183,17 @@ export function AlarmTakeoverModal({
               },
             ]}
           >
-            <BellRing size={52} color="#FFFFFF" strokeWidth={2.4} />
+            <Animated.View style={{ transform: [{ rotate: bellShake.interpolate({ inputRange: [-10, 10], outputRange: ['-10deg', '10deg'] }) }] }}>
+              <BellRing size={56} color="#FFFFFF" strokeWidth={2.4} />
+            </Animated.View>
           </Animated.View>
         </View>
 
-        {/* Medication Details Card */}
+        {/* Medicine Dose Details Card */}
         <View style={styles.medCard}>
           <View style={styles.medCardTop}>
             <View style={styles.pillIconBox}>
-              <Pill size={22} color="#0284C7" />
+              <Pill size={24} color="#0284C7" />
             </View>
             <View style={styles.medCardText}>
               <Text style={styles.medCardName}>{medName}</Text>
@@ -151,18 +203,18 @@ export function AlarmTakeoverModal({
             </View>
           </View>
           <Text style={styles.medAdvisory}>
-            Please take this dose with a full glass of water.
+            Take this prescribed dose with a glass of water.
           </Text>
         </View>
 
-        {/* Large Action Buttons */}
+        {/* Action Controls */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.btnTakenPrimary}
             activeOpacity={0.85}
             onPress={() => onTakeDose(dose.id, 'taken')}
           >
-            <Check size={24} color="#FFFFFF" strokeWidth={2.8} />
+            <Check size={22} color="#FFFFFF" strokeWidth={2.8} />
             <Text style={styles.btnTakenPrimaryText}>Mark Taken</Text>
           </TouchableOpacity>
 
@@ -171,7 +223,7 @@ export function AlarmTakeoverModal({
             activeOpacity={0.85}
             onPress={() => onTakeDose(dose.id, 'taken_late')}
           >
-            <Clock size={20} color="#F59E0B" />
+            <Clock size={18} color="#F59E0B" />
             <Text style={styles.btnLateSecondaryText}>Taken Late</Text>
           </TouchableOpacity>
 
@@ -191,62 +243,66 @@ export function AlarmTakeoverModal({
 const styles = StyleSheet.create({
   fullscreenContainer: {
     flex: 1,
-    backgroundColor: '#0F172A', // Deep Clinical Navy
+    backgroundColor: '#0A0F1D', // Premium Deep Obsidian Navy
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 50,
+    paddingVertical: 56,
     paddingHorizontal: 24,
   },
   closeCornerBtn: {
     position: 'absolute',
-    top: 54,
+    top: 50,
     right: 24,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    zIndex: 20,
   },
-  tagWrap: {
+  topStage: {
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 10,
+  },
+  alarmBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: 'rgba(2, 132, 199, 0.16)',
-    borderColor: 'rgba(56, 189, 248, 0.35)',
+    borderColor: 'rgba(56, 189, 248, 0.4)',
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 20,
+    borderRadius: 24,
+    marginBottom: 14,
   },
-  tagText: {
-    fontSize: 12,
+  alarmBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#38BDF8',
     letterSpacing: 1.2,
   },
   bigTimeText: {
-    fontSize: 56,
+    fontSize: 58,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -1,
-    marginTop: 10,
   },
   reminderNoticeText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#94A3B8',
     letterSpacing: 1.4,
-    marginTop: -8,
+    marginTop: 4,
   },
   bellCenterStage: {
-    width: 180,
-    height: 180,
+    width: 200,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 10,
+    marginVertical: 12,
   },
   radarRipple: {
     position: 'absolute',
@@ -256,26 +312,39 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#EF4444',
   },
+  radarRippleSecondary: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 1.5,
+    borderColor: '#F87171',
+  },
   bellGlowCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.65,
+    shadowRadius: 24,
+    elevation: 16,
   },
   medCard: {
     width: '100%',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#151E32',
     borderRadius: 20,
     padding: 20,
-    borderColor: '#334155',
+    borderColor: '#24324F',
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
   },
   medCardTop: {
     flexDirection: 'row',
@@ -283,12 +352,14 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   pillIconBox: {
-    width: 46,
-    height: 46,
+    width: 48,
+    height: 48,
     borderRadius: 14,
-    backgroundColor: 'rgba(2, 132, 199, 0.15)',
+    backgroundColor: 'rgba(2, 132, 199, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
   medCardText: {
     flex: 1,
@@ -302,6 +373,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     marginTop: 2,
+    fontWeight: '500',
   },
   medAdvisory: {
     fontSize: 12,
@@ -312,7 +384,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     gap: 12,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   btnTakenPrimary: {
     width: '100%',
@@ -324,19 +396,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    elevation: 8,
   },
   btnTakenPrimaryText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+    letterSpacing: 0.4,
   },
   btnLateSecondary: {
     width: '100%',
-    height: 52,
+    height: 50,
     backgroundColor: '#1E293B',
     borderColor: '#F59E0B',
     borderWidth: 1.5,
@@ -347,19 +420,19 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   btnLateSecondaryText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#F59E0B',
   },
   btnSnooze: {
     width: '100%',
-    height: 44,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnSnoozeText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#38BDF8',
   },
 });
