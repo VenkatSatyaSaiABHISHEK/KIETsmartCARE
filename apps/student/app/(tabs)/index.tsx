@@ -187,12 +187,21 @@ export default function StudentHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 1. Full-Screen Alarm Takeover (Rings continuously like real alarm clock) */}
+      {/* 1. Full-Screen Alarm Takeover (Exact Match to Reference Image) */}
       <AlarmTakeoverModal
         visible={Boolean(activeAlarmDose)}
         dose={activeAlarmDose}
+        allDueDoses={doses.filter(
+          (d) =>
+            (d.status === 'scheduled' || d.status === 'unconfirmed') &&
+            (d.scheduled_at === activeAlarmDose?.scheduled_at ||
+              d.time === activeAlarmDose?.time ||
+              d.scheduled_time === activeAlarmDose?.scheduled_time)
+        )}
+        allTodayDoses={doses}
+        profile={profile}
         onTakeDose={handleAnswerDose}
-        onSnooze={handleSnooze}
+        onNotTaken={(doseId) => handleAnswerDose(doseId, 'not_taken')}
         onDismiss={handleDismiss}
       />
 
