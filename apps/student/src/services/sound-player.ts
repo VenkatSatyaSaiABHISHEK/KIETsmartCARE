@@ -2,22 +2,39 @@ import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Asset } from 'expo-asset';
 import * as Haptics from 'expo-haptics';
+import * as FileSystem from 'expo-file-system';
+import { CHIME_BASE64_MP3 } from '../constants/chime-audio-base64';
 
 let soundObject: Audio.Sound | null = null;
 let audioContext: AudioContext | null = null;
 let alarmLoopInterval: any = null;
 let currentHtmlAudio: HTMLAudioElement | null = null;
 let isRinging = false;
+let cachedAudioFileUri: string | null = null;
 
-async function resolveSoundUri(): Promise<string | number> {
-  try {
-    const asset = Asset.fromModule(require('../../assets/sounds/chime_reminder.wav'));
-    await asset.downloadAsync();
-    return asset.localUri || asset.uri || require('../../assets/sounds/chime_reminder.wav');
-  } catch (err) {
-    console.warn('[SOUND PLAYER] Asset resolution error, fallback to require:', err);
-    return require('../../assets/sounds/chime_reminder.wav');
+/**
+ * Resolves a 100% reliable local file URI on Android/iOS.
+ * Writes the embedded base64 MP3 to device cache storage, ensuring zero dependency on network or bundler asset bugs.
+ */
+async function resolveSoundUri(): Promise<string> {
+  if (Platform.OS !== 'web') {
+    if (cachedAudioFileUri) return cachedAudioFileUri;
+    try {
+      const targetPath = `${FileSystem.cacheDirectory}chime_reminder.mp3`;
+      const info = await FileSystem.getInfoAsync(targetPath);
+      if (!info.exists || info.size === 0) {
+        await FileSystem.writeAsStringAsync(targetPath, CHIME_BASE64_MP3, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      }
+      cachedAudioFileUri = targetPath;
+      return targetPath;
+    } catch (err) {
+      console.warn('[SOUND PLAYER] Failed writing local cache sound:', err);
+      return `data:audio/mp3;base64,${CHIME_BASE64_MP3}`;
+    }
   }
+  return `data:audio/mp3;base64,${CHIME_BASE64_MP3}`;
 }
 
 function getAudioContext(): AudioContext | null {
@@ -61,13 +78,14 @@ async function configureAudioMode(): Promise<void> {
  * Play a single chime pulse (used in preview & repeating in real alarm)
  */
 export async function playAlarmChime(): Promise<void> {
+  // Always trigger physical haptic feedback immediately
+  try {
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  } catch {}
+
   // --- NATIVE PLATFORM (ANDROID / IOS) ---
   if (Platform.OS !== 'web') {
     try {
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {}
-
       await configureAudioMode();
 
       // Stop previous instance if exists
@@ -79,19 +97,30 @@ export async function playAlarmChime(): Promise<void> {
         soundObject = null;
       }
 
-      const source = await resolveSoundUri();
-      const soundSource = typeof source === 'string' ? { uri: source } : source;
+      const fileUri = await resolveSoundUri();
 
       const { sound } = await Audio.Sound.createAsync(
-        soundSource,
-        { shouldPlay: false, isLooping: false, volume: 1.0 }
+        { uri: fileUri },
+        { shouldPlay: true, isLooping: false, volume: 1.0 }
       );
       soundObject = sound;
       await soundObject.setVolumeAsync(1.0);
       await soundObject.playAsync();
       return;
     } catch (err) {
-      console.warn('[SOUND PLAYER] Native sound playback failed:', err);
+      console.warn('[SOUND PLAYER] Native sound playback failed with cached file, trying require fallback:', err);
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/chime_reminder.mp3'),
+          { shouldPlay: true, isLooping: false, volume: 1.0 }
+        );
+        soundObject = sound;
+        await soundObject.setVolumeAsync(1.0);
+        await soundObject.playAsync();
+        return;
+      } catch (fbErr) {
+        console.warn('[SOUND PLAYER] All native audio playbacks failed:', fbErr);
+      }
     }
     return;
   }
@@ -169,12 +198,11 @@ export async function startContinuousAlarm(): Promise<void> {
         } catch {}
       }
 
-      const source = await resolveSoundUri();
-      const soundSource = typeof source === 'string' ? { uri: source } : source;
+      const fileUri = await resolveSoundUri();
 
       const { sound } = await Audio.Sound.createAsync(
-        soundSource,
-        { shouldPlay: false, isLooping: true, volume: 1.0 }
+        { uri: fileUri },
+        { shouldPlay: true, isLooping: true, volume: 1.0 }
       );
       soundObject = sound;
       await soundObject.setIsLoopingAsync(true);
@@ -183,6 +211,17 @@ export async function startContinuousAlarm(): Promise<void> {
       return;
     } catch (e) {
       console.warn('[SOUND PLAYER] Native continuous alarm error:', e);
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          require('../../assets/sounds/chime_reminder.mp3'),
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        soundObject = sound;
+        await soundObject.setIsLoopingAsync(true);
+        await soundObject.setVolumeAsync(1.0);
+        await soundObject.playAsync();
+        return;
+      } catch {}
     }
   }
 

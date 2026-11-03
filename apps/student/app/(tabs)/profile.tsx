@@ -70,7 +70,11 @@ export default function ProfileScreen() {
           [{ key: 'data', value: 'package:edu.kiet.smartcare.student' }]
         );
       } catch (e) {
-        Alert.alert('Notice', 'Background permissions are already fully managed by Android.');
+        try {
+          await Linking.openSettings();
+        } catch {
+          Alert.alert('Notice', 'Background permissions are already active.');
+        }
       }
     } else {
       Alert.alert('Device Status', 'iOS background alarms are fully managed automatically.');

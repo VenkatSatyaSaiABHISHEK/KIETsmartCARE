@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   StudentProfileData,
   DoseScheduleRecord,
@@ -12,7 +13,43 @@ import { DEFAULT_MEAL_TIMES } from '../constants/shared';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2500): Promise<Response> {
+interface CacheStore {
+  profile: StudentProfileData | null;
+  doses: DoseScheduleRecord[] | null;
+  prescriptions: PrescriptionRecord[] | null;
+  history: any[] | null;
+  recoveryInquiry: RecoveryInquiry | null;
+}
+
+const memoryCache: CacheStore = {
+  profile: null,
+  doses: null,
+  prescriptions: null,
+  history: null,
+  recoveryInquiry: null,
+};
+
+async function getCached<T>(key: keyof CacheStore): Promise<T | null> {
+  if (memoryCache[key]) return memoryCache[key] as unknown as T;
+  try {
+    const raw = await AsyncStorage.getItem(`KIET_CACHE_${key}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      memoryCache[key] = parsed;
+      return parsed as T;
+    }
+  } catch {}
+  return null;
+}
+
+async function setCached<T>(key: keyof CacheStore, data: T): Promise<void> {
+  (memoryCache as any)[key] = data;
+  try {
+    await AsyncStorage.setItem(`KIET_CACHE_${key}`, JSON.stringify(data));
+  } catch {}
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -34,15 +71,21 @@ export class StudentApi {
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
+    // 0. Instant Cache Return
+    const cached = await getCached<StudentProfileData>('profile');
+    if (cached) {
+      return cached;
+    }
+
     // 1. Try Backend API
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.student) {
           const s = json.student;
-          return {
+          const prof: StudentProfileData = {
             id: s.id,
             roll_number: s.roll_number,
             full_name: s.full_name,
@@ -56,6 +99,8 @@ export class StudentApi {
             emergency_contact: s.emergency_contact || '+91-120-2983555',
             language: 'en',
           };
+          await setCached('profile', prof);
+          return prof;
         }
       }
     } catch (apiErr) {
@@ -86,7 +131,7 @@ export class StudentApi {
 
         if (!error && student) {
           const mt = (student as any).student_meal_times;
-          return {
+          const prof: StudentProfileData = {
             id: student.id,
             roll_number: student.roll_number,
             full_name: student.name,
@@ -104,6 +149,8 @@ export class StudentApi {
             emergency_contact: student.emergency_contact || '+91-120-2983555',
             language: 'en',
           };
+          await setCached('profile', prof);
+          return prof;
         }
       }
     } catch (e) {
@@ -179,6 +226,18 @@ export class StudentApi {
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
+    // 0. Instant Cache Return (Zero-lag tab switching)
+    const cachedDoses = await getCached<DoseScheduleRecord[]>('doses');
+    if (cachedDoses && cachedDoses.length > 0) {
+      // Background revalidation
+      StudentApi.fetchFreshDoses(studentId, rollNumber).catch(() => {});
+      return cachedDoses;
+    }
+
+    return await StudentApi.fetchFreshDoses(studentId, rollNumber);
+  }
+
+  private static async fetchFreshDoses(studentId?: string, rollNumber?: string): Promise<DoseScheduleRecord[]> {
     // 1. Try Backend API with fast timeout
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
@@ -186,6 +245,7 @@ export class StudentApi {
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.doses)) {
+          await setCached('doses', json.doses);
           return json.doses;
         }
       }
@@ -218,7 +278,7 @@ export class StudentApi {
           .order('scheduled_at', { ascending: true });
 
         if (!error && data && data.length > 0) {
-          return data.map((d: any) => {
+          const mapped = data.map((d: any) => {
             const med = d.visit_medications;
             const dateObj = new Date(d.scheduled_at);
             const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -239,6 +299,8 @@ export class StudentApi {
               status: effectiveStatus as any,
             };
           });
+          await setCached('doses', mapped);
+          return mapped;
         }
       }
     } catch (e) {
@@ -260,6 +322,14 @@ export class StudentApi {
     const studentId = session?.user_id;
     const adherenceResponse = status === 'taken' ? 'taken' : status === 'taken_late' ? 'taken_late' : 'not_taken';
 
+    // 0. Update in-memory & local cache immediately
+    if (memoryCache.doses) {
+      memoryCache.doses = memoryCache.doses.map((d) =>
+        d.id === doseId ? { ...d, status: adherenceResponse } : d
+      );
+      setCached('doses', memoryCache.doses);
+    }
+
     // 1. Direct Supabase update for immediate cross-device sync
     try {
       await supabase
@@ -268,7 +338,6 @@ export class StudentApi {
         .eq('id', doseId);
 
       if (studentId) {
-        // Also insert/upsert to dose_events
         await supabase
           .from('dose_events')
           .insert({
@@ -313,41 +382,81 @@ export class StudentApi {
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
-    // 1. Try Backend API
+    // 0. Instant Cache Return
+    const cached = await getCached<PrescriptionRecord[]>('prescriptions');
+    if (cached && cached.length > 0) {
+      StudentApi.fetchFreshPrescriptions(studentId, rollNumber).catch(() => {});
+      return cached;
+    }
+
+    return await StudentApi.fetchFreshPrescriptions(studentId, rollNumber);
+  }
+
+  private static async fetchFreshPrescriptions(studentId?: string, rollNumber?: string): Promise<PrescriptionRecord[]> {
+    // 1. Try Backend API with fast timeout
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetch(`${API_BASE_URL}/api/student/dashboard?${q}`);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.prescriptions)) {
+        if (json.success && Array.isArray(json.prescriptions) && json.prescriptions.length > 0) {
+          await setCached('prescriptions', json.prescriptions);
           return json.prescriptions;
-        }
-        if (json.success && json.prescription) {
-          const p = json.prescription;
-          const startDate = new Date(p.prescribed_at);
-          return [
-            {
-              id: p.id,
-              doctor_name: p.prescribed_by,
-              problem_category: p.diagnosis,
-              start_date: startDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
-              end_date: p.follow_up_date
-                ? new Date(p.follow_up_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-                : 'As advised',
-              is_active: true,
-              medicines: (p.medications || []).map((m: any) => ({
-                name: m.name,
-                dose: m.dosage,
-                meal_relation: m.relation,
-                meal_slot: m.frequency,
-                duration_days: parseInt(m.duration) || 3,
-              })),
-            },
-          ];
         }
       }
     } catch (apiErr) {
-      console.warn('API getPrescriptions error:', apiErr);
+      console.warn('API getPrescriptions error, checking Supabase:', apiErr);
+    }
+
+    // 2. Direct Supabase Fallback
+    try {
+      if (studentId) {
+        const { data: visits } = await supabase
+          .from('visits')
+          .select(`
+            id,
+            diagnosis,
+            prescribed_at,
+            follow_up_date,
+            prescribed_by,
+            visit_medications (
+              dose,
+              frequency,
+              duration_days,
+              meal_relation,
+              medicines ( name )
+            )
+          `)
+          .eq('student_id', studentId)
+          .order('prescribed_at', { ascending: false });
+
+        if (visits && visits.length > 0) {
+          const mapped: PrescriptionRecord[] = visits.map((v: any) => {
+            const startDate = new Date(v.prescribed_at);
+            return {
+              id: v.id,
+              doctor_name: v.prescribed_by || 'Campus Clinic Doctor',
+              problem_category: v.diagnosis || 'Clinical Consultation',
+              start_date: startDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+              end_date: v.follow_up_date
+                ? new Date(v.follow_up_date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                : 'As advised',
+              is_active: true,
+              medicines: (v.visit_medications || []).map((m: any) => ({
+                name: m.medicines?.name || 'Prescribed Tablet',
+                dose: m.dose || '1 tablet',
+                meal_relation: m.meal_relation || 'after',
+                meal_slot: m.frequency || 'food',
+                duration_days: m.duration_days || 3,
+              })),
+            };
+          });
+          await setCached('prescriptions', mapped);
+          return mapped;
+        }
+      }
+    } catch (e) {
+      console.warn('Supabase getPrescriptions fallback error:', e);
     }
 
     return [];
@@ -361,18 +470,67 @@ export class StudentApi {
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
+    // 0. Instant Cache Return
+    const cached = await getCached<any[]>('history');
+    if (cached && cached.length > 0) {
+      StudentApi.fetchFreshHistory(studentId, rollNumber).catch(() => {});
+      return cached;
+    }
+
+    return await StudentApi.fetchFreshHistory(studentId, rollNumber);
+  }
+
+  private static async fetchFreshHistory(studentId?: string, rollNumber?: string): Promise<any[]> {
+    // 1. Try Backend API with fast timeout
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetch(`${API_BASE_URL}/api/student/dashboard?${q}`);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.history)) {
+        if (json.success && Array.isArray(json.history) && json.history.length > 0) {
+          await setCached('history', json.history);
           return json.history;
         }
       }
     } catch (apiErr) {
-      console.warn('API getHistory error:', apiErr);
+      console.warn('API getHistory error, checking Supabase:', apiErr);
     }
+
+    // 2. Direct Supabase Fallback
+    try {
+      if (studentId) {
+        const { data: visits } = await supabase
+          .from('visits')
+          .select(`
+            id,
+            created_at,
+            prescribed_at,
+            diagnosis,
+            prescribed_by,
+            visit_medications (
+              medicines ( name )
+            )
+          `)
+          .eq('student_id', studentId)
+          .order('created_at', { ascending: false });
+
+        if (visits && visits.length > 0) {
+          const mapped = visits.map((v: any) => ({
+            id: v.id,
+            date: new Date(v.prescribed_at || v.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+            doctor: v.prescribed_by || 'Campus Clinic Doctor',
+            problem: v.diagnosis || 'Clinical Consultation',
+            medicines: (v.visit_medications || []).map((m: any) => m.medicines?.name).filter(Boolean).join(', ') || 'Prescribed medications',
+            outcome: 'Active Course',
+          }));
+          await setCached('history', mapped);
+          return mapped;
+        }
+      }
+    } catch (e) {
+      console.warn('Supabase getHistory fallback error:', e);
+    }
+
     return [];
   }
 
@@ -386,11 +544,24 @@ export class StudentApi {
 
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetch(`${API_BASE_URL}/api/student/dashboard?${q}`);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.recovery_inquiry) {
           return {
+            id: json.recovery_inquiry.id,
+            visit_id: json.recovery_inquiry.visit_id,
+            problem_name: 'Recent Consultation Recovery',
+            due_date: 'Today',
+          };
+        }
+      }
+    } catch (apiErr) {
+      console.warn('API getRecoveryInquiry error:', apiErr);
+    }
+
+    return null;
+  }
             id: json.recovery_inquiry.id,
             visit_id: json.recovery_inquiry.visit_id,
             problem_name: 'Recent Consultation Recovery',

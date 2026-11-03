@@ -21,7 +21,7 @@ if (Platform.OS !== 'web') {
 }
 
 // Android channel configuration
-const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v4';
+const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v5';
 export const DOSE_NOTIFICATION_CATEGORY = 'DOSE_REMINDER_ACTIONS';
 
 export class ReminderEngine {
