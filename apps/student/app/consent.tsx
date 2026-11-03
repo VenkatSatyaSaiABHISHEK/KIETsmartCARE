@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Platform,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ShieldCheck, Bell, Zap, BatteryCharging, Check } from 'lucide-react-native';
@@ -31,8 +33,22 @@ export default function ConsentScreen() {
 
     setIsSubmitting(true);
     try {
-      // Initialize notification & audio channels
+      // 1. Initialize high-importance notification channel & request notification permission
       await ReminderEngine.init();
+
+      // 2. Request native Android background/battery exemption dialog (1-tap OS popup)
+      if (Platform.OS === 'android') {
+        try {
+          await Linking.sendIntent(
+            'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+            [{ key: 'data', value: 'package:edu.kiet.smartcare.student' }]
+          );
+        } catch (e) {
+          console.warn('[CONSENT] Battery intent notice:', e);
+        }
+      }
+
+      // 3. Initialize audio engine
       await enableAudioAndNotifications();
 
       await StudentApi.recordConsent();

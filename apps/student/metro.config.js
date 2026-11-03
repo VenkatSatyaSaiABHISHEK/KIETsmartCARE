@@ -6,3 +6,4 @@ const config = getDefaultConfig(__dirname);
 config.resolver.assetExts.push('wav', 'mp3', 'm4a', 'ogg');
 
 module.exports = config;
+

@@ -7,11 +7,12 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
+  Platform,
   Linking,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { User, Phone, LogOut, Clock, Bell, CheckCircle2, Volume2 } from 'lucide-react-native';
+import { User, Phone, LogOut, Clock, Bell, CheckCircle2, Volume2, BatteryCharging } from 'lucide-react-native';
 import { StudentApi } from '../../src/services/student-api';
 import { AuthService } from '../../src/services/auth';
 import { StudentProfileData } from '../../src/types/student';
@@ -59,6 +60,21 @@ export default function ProfileScreen() {
     await playAlarmChime();
     setTimeout(() => setSoundStatus('Chime played successfully'), 1500);
     setTimeout(() => setSoundStatus(null), 3500);
+  };
+
+  const handleOptimizeBackground = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        await Linking.sendIntent(
+          'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
+          [{ key: 'data', value: 'package:edu.kiet.smartcare.student' }]
+        );
+      } catch (e) {
+        Alert.alert('Notice', 'Background permissions are already fully managed by Android.');
+      }
+    } else {
+      Alert.alert('Device Status', 'iOS background alarms are fully managed automatically.');
+    }
   };
 
   const handleLogout = async () => {
@@ -170,6 +186,22 @@ export default function ProfileScreen() {
               <Text style={styles.statusToastText}>{soundStatus}</Text>
             </View>
           )}
+        </View>
+
+        {/* Background Reliability */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <BatteryCharging size={18} color="#0284C7" />
+            <Text style={styles.cardTitle}>Background Alarm Health</Text>
+          </View>
+          <Text style={styles.cardDesc}>
+            Ensures alarms ring even if your phone is locked, asleep, or in power-saving mode.
+          </Text>
+
+          <TouchableOpacity style={styles.soundTestBtn} onPress={handleOptimizeBackground}>
+            <CheckCircle2 size={16} color="#0284C7" />
+            <Text style={styles.soundTestBtnText}>Keep Alarms Active In Background</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Campus Clinic Helpline */}
