@@ -228,7 +228,7 @@ export class StudentApi {
 
     // 0. Instant Cache Return (Zero-lag tab switching)
     const cachedDoses = await getCached<DoseScheduleRecord[]>('doses');
-    if (cachedDoses && cachedDoses.length > 0) {
+    if (cachedDoses !== null && cachedDoses !== undefined) {
       // Background revalidation
       StudentApi.fetchFreshDoses(studentId, rollNumber).catch(() => {});
       return cachedDoses;
@@ -384,7 +384,7 @@ export class StudentApi {
 
     // 0. Instant Cache Return
     const cached = await getCached<PrescriptionRecord[]>('prescriptions');
-    if (cached && cached.length > 0) {
+    if (cached !== null && cached !== undefined) {
       StudentApi.fetchFreshPrescriptions(studentId, rollNumber).catch(() => {});
       return cached;
     }
@@ -399,7 +399,7 @@ export class StudentApi {
       const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.prescriptions) && json.prescriptions.length > 0) {
+        if (json.success && Array.isArray(json.prescriptions)) {
           await setCached('prescriptions', json.prescriptions);
           return json.prescriptions;
         }
@@ -472,7 +472,7 @@ export class StudentApi {
 
     // 0. Instant Cache Return
     const cached = await getCached<any[]>('history');
-    if (cached && cached.length > 0) {
+    if (cached !== null && cached !== undefined) {
       StudentApi.fetchFreshHistory(studentId, rollNumber).catch(() => {});
       return cached;
     }
@@ -487,7 +487,7 @@ export class StudentApi {
       const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
-        if (json.success && Array.isArray(json.history) && json.history.length > 0) {
+        if (json.success && Array.isArray(json.history)) {
           await setCached('history', json.history);
           return json.history;
         }

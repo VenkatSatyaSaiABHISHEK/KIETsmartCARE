@@ -17,8 +17,11 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchVisits = async () => {
+  const fetchVisits = async (showLoading = true) => {
     try {
+      if (showLoading && history.length === 0) {
+        setLoading(true);
+      }
       const items = await StudentApi.getHistory();
       setHistory(items);
     } catch (e) {
@@ -31,7 +34,7 @@ export default function HistoryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchVisits();
+      fetchVisits(false);
     }, [])
   );
 

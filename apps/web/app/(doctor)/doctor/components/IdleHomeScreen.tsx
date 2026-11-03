@@ -29,6 +29,12 @@ interface IdleHomeScreenProps {
   onClearError?: () => void;
 }
 
+// In-memory module cache for doctor home metrics
+let cachedDoctorTodayData: {
+  summary: TodaySummary;
+  todayPatients: TodayPatientRow[];
+} | null = null;
+
 export function IdleHomeScreen({
   onSelectStudent,
   isLoadingStudent = false,
@@ -40,13 +46,17 @@ export function IdleHomeScreen({
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [todaySummary, setTodaySummary] = useState<TodaySummary>({
-    patients_seen: 0,
-    courses_active: 0,
-    alerts: 0,
+  const [todaySummary, setTodaySummary] = useState<TodaySummary>(() => {
+    return cachedDoctorTodayData?.summary || {
+      patients_seen: 0,
+      courses_active: 0,
+      alerts: 0,
+    };
   });
-  const [todayPatients, setTodayPatients] = useState<TodayPatientRow[]>([]);
-  const [isTodayLoading, setIsTodayLoading] = useState(true);
+  const [todayPatients, setTodayPatients] = useState<TodayPatientRow[]>(() => {
+    return cachedDoctorTodayData?.todayPatients || [];
+  });
+  const [isTodayLoading, setIsTodayLoading] = useState(() => !cachedDoctorTodayData);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -59,17 +69,18 @@ export function IdleHomeScreen({
   // 2. Load Today summary & patient rows
   useEffect(() => {
     async function loadTodayData() {
-      setIsTodayLoading(true);
+      if (!cachedDoctorTodayData) {
+        setIsTodayLoading(true);
+      }
       try {
         const res = await fetch("/api/doctor/today", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          if (data.summary) {
-            setTodaySummary(data.summary);
-          }
-          if (data.todayPatients) {
-            setTodayPatients(data.todayPatients);
-          }
+          const summary = data.summary || { patients_seen: 0, courses_active: 0, alerts: 0 };
+          const patients = data.todayPatients || [];
+          cachedDoctorTodayData = { summary, todayPatients: patients };
+          setTodaySummary(summary);
+          setTodayPatients(patients);
         }
       } catch (err) {
         console.warn("Failed to load today data:", err);
@@ -262,27 +273,39 @@ export function IdleHomeScreen({
         {/* Three Large Numerals */}
         <div className="grid grid-cols-3 gap-6 max-w-[760px] mb-8">
           <div>
-            <div className="font-serif text-[40px] text-[#0F1B33] leading-none tabular-nums">
-              {todaySummary.patients_seen}
-            </div>
+            {isTodayLoading && !cachedDoctorTodayData ? (
+              <div className="h-[40px] w-14 bg-black/10 rounded-[6px] animate-pulse" />
+            ) : (
+              <div className="font-serif text-[40px] text-[#0F1B33] leading-none tabular-nums">
+                {todaySummary.patients_seen}
+              </div>
+            )}
             <div className="text-[13px] font-sans text-[#6B7280] mt-1.5">
               Patients seen
             </div>
           </div>
 
           <div>
-            <div className="font-serif text-[40px] text-[#0F1B33] leading-none tabular-nums">
-              {todaySummary.courses_active}
-            </div>
+            {isTodayLoading && !cachedDoctorTodayData ? (
+              <div className="h-[40px] w-14 bg-black/10 rounded-[6px] animate-pulse" />
+            ) : (
+              <div className="font-serif text-[40px] text-[#0F1B33] leading-none tabular-nums">
+                {todaySummary.courses_active}
+              </div>
+            )}
             <div className="text-[13px] font-sans text-[#6B7280] mt-1.5">
               Courses active
             </div>
           </div>
 
           <div>
-            <div className="font-serif text-[40px] text-[#0F1B33] leading-none tabular-nums">
-              {todaySummary.alerts}
-            </div>
+            {isTodayLoading && !cachedDoctorTodayData ? (
+              <div className="h-[40px] w-14 bg-black/10 rounded-[6px] animate-pulse" />
+            ) : (
+              <div className="font-serif text-[40px] text-[#0F1B33] leading-none tabular-nums">
+                {todaySummary.alerts}
+              </div>
+            )}
             <div className="text-[13px] font-sans text-[#6B7280] mt-1.5">
               {todaySummary.alerts === 1 ? "Alert" : "Alerts"}
             </div>

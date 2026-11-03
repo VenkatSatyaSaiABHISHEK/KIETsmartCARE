@@ -78,10 +78,12 @@ async function configureAudioMode(): Promise<void> {
  * Play a single chime pulse (used in preview & repeating in real alarm)
  */
 export async function playAlarmChime(): Promise<void> {
-  // Always trigger physical haptic feedback immediately
-  try {
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  } catch {}
+  // Always trigger physical haptic feedback immediately on native devices
+  if (Platform.OS !== 'web') {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+  }
 
   // --- NATIVE PLATFORM (ANDROID / IOS) ---
   if (Platform.OS !== 'web') {

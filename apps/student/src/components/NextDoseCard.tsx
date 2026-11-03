@@ -7,7 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Pill, Clock, CheckCircle2, AlertCircle } from 'lucide-react-native';
+import { Pill, Clock, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react-native';
 import { DoseScheduleRecord } from '../types/student';
 import { MISSED_DOSE_ADVISORY, formatTime12h } from '../constants/shared';
 
@@ -20,7 +20,20 @@ interface NextDoseCardProps {
 export function NextDoseCard({ dose, allTodayDoses = [], onAnswerDose }: NextDoseCardProps) {
   const [showMissedAdvisory, setShowMissedAdvisory] = useState(false);
 
-  if (!dose) {
+  // Doses due at this exact same time
+  const siblingDoses = dose
+    ? allTodayDoses.filter(
+        (d) =>
+          (d.status === 'scheduled' || d.status === 'unconfirmed') &&
+          (d.id === dose.id ||
+            (d.scheduled_at && d.scheduled_at === dose.scheduled_at) ||
+            ((d.time || d.scheduled_time) && (d.time || d.scheduled_time) === (dose.time || dose.scheduled_time)))
+      )
+    : [];
+
+  const activeDoses = siblingDoses.length > 0 ? siblingDoses : dose ? [dose] : [];
+
+  if (!dose || activeDoses.length === 0) {
     return (
       <View style={styles.cardContainer}>
         <View style={styles.emptyIconCircle}>
@@ -28,7 +41,7 @@ export function NextDoseCard({ dose, allTodayDoses = [], onAnswerDose }: NextDos
         </View>
         <Text style={styles.emptyTitle}>All caught up for now</Text>
         <Text style={styles.emptySubtext}>
-          No doses are currently scheduled. When your doctor prescribes medication, your schedule and dose reminders will appear here.
+          No doses are currently pending. When your doctor prescribes medication, your schedule and dose reminders will appear here.
         </Text>
       </View>
     );
@@ -42,9 +55,7 @@ export function NextDoseCard({ dose, allTodayDoses = [], onAnswerDose }: NextDos
     if (Platform.OS !== 'web') {
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      } catch {
-        // web fallback
-      }
+      } catch {}
     }
   };
 
@@ -62,14 +73,13 @@ export function NextDoseCard({ dose, allTodayDoses = [], onAnswerDose }: NextDos
   const rawSlot = dose.slot || dose.meal_slot || 'Meal';
   const slotName = rawSlot.charAt(0).toUpperCase() + rawSlot.slice(1);
   const formattedTime = formatTime12h(dose.scheduled_at || dose.time || dose.scheduled_time);
-  const timeHeading = `${mealText} ${slotName} • ${formattedTime}`;
 
   return (
     <View style={styles.cardContainer}>
-      {/* Header: Label + Progress */}
+      {/* Header: Label + Progress Badge */}
       <View style={styles.topRow}>
         <View style={styles.labelRow}>
-          <Clock size={14} color="#0284C7" />
+          <Clock size={14} color="#1D4ED8" />
           <Text style={styles.label}>NEXT SCHEDULED DOSE</Text>
         </View>
         <View style={styles.progressPill}>
@@ -79,53 +89,61 @@ export function NextDoseCard({ dose, allTodayDoses = [], onAnswerDose }: NextDos
         </View>
       </View>
 
-      {/* Time Heading */}
-      <Text style={styles.timeHeading}>{timeHeading}</Text>
-
-      {/* Medicines Box */}
-      <View style={styles.medsBox}>
-        <View style={styles.medIconBox}>
-          <Pill size={18} color="#0F1B33" />
-        </View>
-        <View style={styles.medRow}>
-          <Text style={styles.medName}>{dose.medicine_name}</Text>
-          <Text style={styles.medDose}>
-            {dose.tablets ? `${dose.tablets} tablet${dose.tablets > 1 ? 's' : ''}` : dose.dose || '1 tablet'}
-          </Text>
-        </View>
+      {/* Big Hero Time Heading */}
+      <View style={styles.heroTimeRow}>
+        <Text style={styles.slotNameText}>{mealText} {slotName}</Text>
+        <Text style={styles.timeDotText}>•</Text>
+        <Text style={styles.timeDigitsText}>{formattedTime}</Text>
       </View>
 
-      {/* Three Response Buttons */}
+      {/* Medicines Box: renders all sibling tablets clearly */}
+      <View style={styles.medsBox}>
+        {activeDoses.map((item, idx) => (
+          <View key={item.id || idx} style={[styles.medRow, idx > 0 && styles.medRowBorder]}>
+            <View style={styles.medIconBox}>
+              <Pill size={16} color="#0F1B33" />
+            </View>
+            <View style={styles.medInfoCol}>
+              <Text style={styles.medName}>{item.medicine_name}</Text>
+              <Text style={styles.medDose}>
+                {item.tablets ? `${item.tablets} tablet${item.tablets > 1 ? 's' : ''}` : item.dose || '1 tablet'} • {mealText} Food
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Three Response Action Buttons */}
       <View style={styles.btnRow}>
         <TouchableOpacity
-          style={[styles.btn, styles.btnTaken]}
-          activeOpacity={0.8}
+          style={[styles.actionBtn, styles.btnTaken]}
           onPress={() => handleResponse('taken')}
+          activeOpacity={0.85}
         >
-          <Text style={styles.btnTakenText}>Taken</Text>
+          <Text style={styles.btnTakenText}>Mark Taken</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.btn, styles.btnTakenLate]}
-          activeOpacity={0.8}
+          style={[styles.actionBtn, styles.btnLate]}
           onPress={() => handleResponse('taken_late')}
+          activeOpacity={0.85}
         >
-          <Text style={styles.btnTakenLateText}>Taken Late</Text>
+          <Text style={styles.btnLateText}>Taken Late</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.btn, styles.btnMissed]}
-          activeOpacity={0.8}
+          style={[styles.actionBtn, styles.btnMissed]}
           onPress={() => handleResponse('not_taken')}
+          activeOpacity={0.85}
         >
           <Text style={styles.btnMissedText}>Missed</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Missed dose clinical guidance banner */}
+      {/* Missed Dose Advisory */}
       {showMissedAdvisory && (
-        <View style={styles.advisoryBanner}>
-          <AlertCircle size={16} color="#DC2626" style={styles.advisoryIcon} />
+        <View style={styles.advisoryBox}>
+          <ShieldAlert size={16} color="#991B1B" />
           <Text style={styles.advisoryText}>{MISSED_DOSE_ADVISORY}</Text>
         </View>
       )}
@@ -136,17 +154,24 @@ export function NextDoseCard({ dose, allTodayDoses = [], onAnswerDose }: NextDos
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    marginHorizontal: 16,
-    marginTop: 16,
-    shadowColor: '#0F1B33',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0F1B33',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 4px 14px rgba(15,27,51,0.06)',
+      },
+    }),
   },
   topRow: {
     flexDirection: 'row',
@@ -162,112 +187,130 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#0284C7',
-    letterSpacing: 0.8,
+    letterSpacing: 1.1,
+    color: '#1D4ED8',
+    textTransform: 'uppercase',
   },
   progressPill: {
     backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   progressText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  timeHeading: {
-    fontSize: 20,
     fontWeight: '700',
-    color: '#0F1B33',
+    color: '#475569',
+    letterSpacing: 0.5,
+  },
+  heroTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
     marginBottom: 14,
   },
+  slotNameText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0F1B33',
+  },
+  timeDotText: {
+    fontSize: 18,
+    color: '#94A3B8',
+  },
+  timeDigitsText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0284C7',
+  },
   medsBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#EDF2F7',
+  },
+  medRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 10,
+  },
+  medRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
   },
   medIconBox: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  medRow: {
+  medInfoCol: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   medName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#0F1B33',
   },
   medDose: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
+    marginTop: 1,
   },
   btnRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  btn: {
+  actionBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
   btnTaken: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
+    backgroundColor: '#0F1B33',
   },
   btnTakenText: {
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
-    color: '#059669',
   },
-  btnTakenLate: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
+  btnLate: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#0F1B33',
   },
-  btnTakenLateText: {
-    fontSize: 14,
+  btnLateText: {
+    color: '#0F1B33',
+    fontSize: 13,
     fontWeight: '700',
-    color: '#D97706',
   },
   btnMissed: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
   },
   btnMissedText: {
-    fontSize: 14,
+    color: '#BE123C',
+    fontSize: 13,
     fontWeight: '700',
-    color: '#DC2626',
   },
-  advisoryBanner: {
-    flexDirection: 'row',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 8,
-    padding: 10,
+  advisoryBox: {
     marginTop: 12,
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    padding: 10,
+    borderRadius: 10,
     alignItems: 'flex-start',
-  },
-  advisoryIcon: {
-    marginRight: 8,
-    marginTop: 2,
   },
   advisoryText: {
     flex: 1,
@@ -276,10 +319,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   emptyIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ECFDF5',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,

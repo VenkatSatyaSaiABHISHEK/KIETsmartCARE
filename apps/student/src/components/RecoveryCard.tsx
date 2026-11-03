@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   Linking,
+  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { HeartPulse, CheckCircle2, AlertTriangle, PhoneCall } from 'lucide-react-native';
@@ -22,13 +23,15 @@ export function RecoveryCard({ inquiry, onAnswer }: RecoveryCardProps) {
   );
 
   const handleSelect = (response: 'better' | 'same' | 'worse') => {
-    try {
-      Haptics.notificationAsync(
-        response === 'better'
-          ? Haptics.NotificationFeedbackType.Success
-          : Haptics.NotificationFeedbackType.Warning
-      );
-    } catch {}
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.notificationAsync(
+          response === 'better'
+            ? Haptics.NotificationFeedbackType.Success
+            : Haptics.NotificationFeedbackType.Warning
+        );
+      } catch {}
+    }
 
     setAnsweredState(response);
     onAnswer(response);

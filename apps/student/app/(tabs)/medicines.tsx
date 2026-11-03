@@ -18,8 +18,11 @@ export default function MedicinesScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadPrescriptions = async () => {
+  const loadPrescriptions = async (showLoading = true) => {
     try {
+      if (showLoading && prescriptions.length === 0) {
+        setIsLoading(true);
+      }
       const data = await StudentApi.getPrescriptions();
       setPrescriptions(data || []);
     } catch (e) {
@@ -31,7 +34,7 @@ export default function MedicinesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPrescriptions();
+      loadPrescriptions(false);
     }, [])
   );
 

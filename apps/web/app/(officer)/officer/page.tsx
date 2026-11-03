@@ -126,6 +126,16 @@ function formatReason(r: string): string {
   return r;
 }
 
+// In-memory module cache for instant switching between tabs
+const officerDashboardCache = new Map<string, DashboardData>();
+const officerStudentsCache = new Map<string, { students: StudentItem[]; counts: StudentCounts }>();
+
+function MetricSkeleton({ width = "w-14" }: { width?: string }) {
+  return (
+    <div className={`h-[36px] ${width} bg-black/10 rounded-[6px] animate-pulse my-0.5`} />
+  );
+}
+
 export default function OfficerOverviewPage() {
   const todayIst = getTodayIst();
   const [anchorDate, setAnchorDate] = useState<string>(todayIst);
@@ -134,21 +144,25 @@ export default function OfficerOverviewPage() {
   // Live Clock (Asia/Kolkata)
   const [clockStr, setClockStr] = useState<string>("");
 
-  // Dashboard Data State
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Dashboard Data State with instant cache
+  const initialCacheKey = `${todayIst}_today`;
+  const [dashboard, setDashboard] = useState<DashboardData | null>(
+    () => officerDashboardCache.get(initialCacheKey) || null
+  );
+  const [isLoading, setIsLoading] = useState(() => !officerDashboardCache.has(initialCacheKey));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
 
-  // Students Table State
+  // Students Table State with instant cache
   const [studentTab, setStudentTab] = useState<"all" | "needs_attention" | "active" | "recovered">("all");
   const [studentSearch, setStudentSearch] = useState<string>("");
-  const [students, setStudents] = useState<StudentItem[]>([]);
-  const [studentCounts, setStudentCounts] = useState<StudentCounts>({
-    all: 0,
-    needs_attention: 0,
-    active: 0,
-    recovered: 0,
+  const [students, setStudents] = useState<StudentItem[]>(() => {
+    const cached = officerStudentsCache.get(`${todayIst}_today_all_`);
+    return cached?.students || [];
+  });
+  const [studentCounts, setStudentCounts] = useState<StudentCounts>(() => {
+    const cached = officerStudentsCache.get(`${todayIst}_today_all_`);
+    return cached?.counts || { all: 0, needs_attention: 0, active: 0, recovered: 0 };
   });
   const [isStudentsLoading, setIsStudentsLoading] = useState(false);
 
@@ -189,7 +203,9 @@ export default function OfficerOverviewPage() {
   // 3. Fetch dashboard function
   const loadDashboard = useCallback(
     async (isBackground = false) => {
-      if (!isBackground) setIsLoading(true);
+      const cacheKey = `${anchorDate}_${period}`;
+      const hasCached = officerDashboardCache.has(cacheKey);
+      if (!isBackground && !hasCached) setIsLoading(true);
       try {
         const res = await fetch(
           `/api/officer/dashboard?anchorDate=${anchorDate}&period=${period}`,
@@ -199,12 +215,15 @@ export default function OfficerOverviewPage() {
           throw new Error("Could not refresh. Retrying.");
         }
         const data: DashboardData = await res.json();
+        officerDashboardCache.set(cacheKey, data);
         setDashboard(data);
         setErrorMessage(null);
       } catch (err: any) {
-        setErrorMessage("Connection issue. Showing cached overview.");
+        if (!hasCached) {
+          setErrorMessage("Connection issue. Showing cached overview.");
+        }
       } finally {
-        if (!isBackground) setIsLoading(false);
+        setIsLoading(false);
       }
     },
     [anchorDate, period]
@@ -213,9 +232,17 @@ export default function OfficerOverviewPage() {
   // 4. Fetch students function
   const loadStudents = useCallback(
     async (overrideSearch?: string) => {
-      setIsStudentsLoading(true);
+      const q = overrideSearch !== undefined ? overrideSearch : studentSearch;
+      const studentsCacheKey = `${anchorDate}_${period}_${studentTab}_${q}`;
+      const cached = officerStudentsCache.get(studentsCacheKey);
+      if (cached && students.length === 0) {
+        setStudents(cached.students);
+        setStudentCounts(cached.counts);
+      } else if (!cached) {
+        setIsStudentsLoading(true);
+      }
+
       try {
-        const q = overrideSearch !== undefined ? overrideSearch : studentSearch;
         const res = await fetch(
           `/api/officer/students?anchorDate=${anchorDate}&period=${period}&tab=${studentTab}&search=${encodeURIComponent(
             q
@@ -224,10 +251,11 @@ export default function OfficerOverviewPage() {
         );
         if (res.ok) {
           const data = await res.json();
-          setStudents(data.students || []);
-          if (data.counts) {
-            setStudentCounts(data.counts);
-          }
+          const items = data.students || [];
+          const counts = data.counts || { all: 0, needs_attention: 0, active: 0, recovered: 0 };
+          officerStudentsCache.set(studentsCacheKey, { students: items, counts });
+          setStudents(items);
+          setStudentCounts(counts);
         }
       } catch {
         // Fallback silently
@@ -235,7 +263,7 @@ export default function OfficerOverviewPage() {
         setIsStudentsLoading(false);
       }
     },
-    [anchorDate, period, studentTab, studentSearch]
+    [anchorDate, period, studentTab, studentSearch, students.length]
   );
 
   // Load when parameters change
@@ -446,23 +474,31 @@ export default function OfficerOverviewPage() {
             </div>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div>
-                <div
-                  className={`font-serif text-[clamp(28px,3vw,38px)] leading-none tabular-nums lining-nums ${
-                    (dashboard?.needs_action.open_alerts || 0) > 0
-                      ? "text-[#B91C1C] font-semibold"
-                      : "text-[#0F1B33]"
-                  }`}
-                >
-                  {dashboard?.needs_action.open_alerts ?? 0}
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-14" />
+                ) : (
+                  <div
+                    className={`font-serif text-[clamp(28px,3vw,38px)] leading-none tabular-nums lining-nums ${
+                      (dashboard?.needs_action.open_alerts || 0) > 0
+                        ? "text-[#B91C1C] font-semibold"
+                        : "text-[#0F1B33]"
+                    }`}
+                  >
+                    {dashboard?.needs_action.open_alerts ?? 0}
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   Open alerts
                 </div>
               </div>
               <div>
-                <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
-                  {dashboard?.needs_action.no_response ?? 0}
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-14" />
+                ) : (
+                  <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
+                    {dashboard?.needs_action.no_response ?? 0}
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   No response
                 </div>
@@ -477,19 +513,27 @@ export default function OfficerOverviewPage() {
             </div>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <div>
-                <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
-                  {dashboard?.under_treatment.active ?? 0}
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-14" />
+                ) : (
+                  <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
+                    {dashboard?.under_treatment.active ?? 0}
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   Active treatments
                 </div>
               </div>
               <div>
-                <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums flex items-baseline">
-                  <span>{dashboard?.under_treatment.doses_confirmed ?? 0}</span>
-                  <span className="text-[18px] text-[#6B7280] font-normal mx-1">of</span>
-                  <span>{dashboard?.under_treatment.doses_due ?? 0}</span>
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-20" />
+                ) : (
+                  <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums flex items-baseline">
+                    <span>{dashboard?.under_treatment.doses_confirmed ?? 0}</span>
+                    <span className="text-[18px] text-[#6B7280] font-normal mx-1">of</span>
+                    <span>{dashboard?.under_treatment.doses_due ?? 0}</span>
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   Doses confirmed {periodCaption}
                 </div>
@@ -504,25 +548,37 @@ export default function OfficerOverviewPage() {
             </div>
             <div className="grid grid-cols-3 gap-2 mt-2">
               <div>
-                <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
-                  {dashboard?.this_period.students_seen ?? 0}
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-10" />
+                ) : (
+                  <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
+                    {dashboard?.this_period.students_seen ?? 0}
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   Students seen
                 </div>
               </div>
               <div>
-                <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
-                  {dashboard?.this_period.recovered ?? 0}
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-10" />
+                ) : (
+                  <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
+                    {dashboard?.this_period.recovered ?? 0}
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   Recovered
                 </div>
               </div>
               <div>
-                <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
-                  {dashboard?.this_period.not_recovered ?? 0}
-                </div>
+                {isLoading && !dashboard ? (
+                  <MetricSkeleton width="w-10" />
+                ) : (
+                  <div className="font-serif text-[clamp(28px,3vw,38px)] leading-none text-[#0F1B33] tabular-nums lining-nums">
+                    {dashboard?.this_period.not_recovered ?? 0}
+                  </div>
+                )}
                 <div className="text-[12px] font-sans text-[#6B7280] mt-1">
                   Not recovered
                 </div>

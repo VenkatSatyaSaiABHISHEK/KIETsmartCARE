@@ -11,6 +11,8 @@ import {
 import { Volume2 } from 'lucide-react-native';
 import { NextDoseCard } from '../../src/components/NextDoseCard';
 import { RecoveryCard } from '../../src/components/RecoveryCard';
+import { TodayTimeline } from '../../src/components/TodayTimeline';
+import { HomeSkeletonLoader } from '../../src/components/SkeletonLoader';
 import { AlarmTakeoverModal } from '../../src/components/AlarmTakeoverModal';
 import { StudentApi } from '../../src/services/student-api';
 import { ReminderEngine } from '../../src/services/reminder-engine';
@@ -31,6 +33,7 @@ export default function StudentHomeScreen() {
   const [doses, setDoses] = useState<DoseScheduleRecord[]>([]);
   const [recoveryInquiry, setRecoveryInquiry] = useState<RecoveryInquiry | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeAlarmDose, setActiveAlarmDose] = useState<DoseScheduleRecord | null>(null);
   const [soundTested, setSoundTested] = useState(false);
 
@@ -44,16 +47,20 @@ export default function StudentHomeScreen() {
   }, [doses]);
 
   const loadStudentData = async () => {
-    const [prof, dList, rec] = await Promise.all([
-      StudentApi.getProfile(),
-      StudentApi.getDoses(),
-      StudentApi.getRecoveryInquiry(),
-    ]);
-    setProfile(prof);
-    setDoses(dList);
-    dosesRef.current = dList;
-    setRecoveryInquiry(rec);
-    return { prof, dList };
+    try {
+      const [prof, dList, rec] = await Promise.all([
+        StudentApi.getProfile(),
+        StudentApi.getDoses(),
+        StudentApi.getRecoveryInquiry(),
+      ]);
+      setProfile(prof);
+      setDoses(dList);
+      dosesRef.current = dList;
+      setRecoveryInquiry(rec);
+      return { prof, dList };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Check upcoming doses against current time and trigger continuous alarm
@@ -240,7 +247,7 @@ export default function StudentHomeScreen() {
         {/* Header Section with Audio Test Pill */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <Text style={styles.brandTitle}>KIET SMART CARE</Text>
+            <Text style={styles.greetingTitle}>Hello, {firstName}</Text>
             <TouchableOpacity
               style={[styles.soundPill, soundTested && styles.soundPillActive]}
               onPress={handleTestSound}
@@ -252,82 +259,36 @@ export default function StudentHomeScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.greetingTitle}>Hello, {firstName}</Text>
           <Text style={styles.dateSubtext}>{todayFormatted}</Text>
         </View>
 
-        {/* 2. Main Action Cards */}
-        <View style={styles.cardSection}>
-          {recoveryInquiry && (
-            <RecoveryCard
-              inquiry={recoveryInquiry}
-              onAnswer={handleAnswerRecovery}
-            />
-          )}
+        {isLoading && doses.length === 0 ? (
+          <HomeSkeletonLoader />
+        ) : (
+          <>
+            {/* 2. Main Action Cards */}
+            <View style={styles.cardSection}>
+              {recoveryInquiry && (
+                <RecoveryCard
+                  inquiry={recoveryInquiry}
+                  onAnswer={handleAnswerRecovery}
+                />
+              )}
 
-          <NextDoseCard
-            dose={nextDose}
-            allTodayDoses={doses}
-            onAnswerDose={handleAnswerDose}
-          />
-        </View>
-
-        {/* 3. Today's Schedule List */}
-        <View style={styles.scheduleSection}>
-          <Text style={styles.sectionHeading}>TODAY&apos;S SCHEDULE</Text>
-
-          {doses.length === 0 ? (
-            <View style={styles.emptySchedule}>
-              <Text style={styles.emptyScheduleText}>
-                No doses scheduled for today.
-              </Text>
+              <NextDoseCard
+                dose={nextDose}
+                allTodayDoses={doses}
+                onAnswerDose={handleAnswerDose}
+              />
             </View>
-          ) : (
-            <View style={styles.scheduleList}>
-              {doses.map((d, index) => {
-                const statusColor =
-                  d.status === 'taken' || d.status === 'taken_late'
-                    ? '#166534'
-                    : d.status === 'not_taken'
-                    ? '#991B1B'
-                    : '#555555';
 
-                const statusLabel =
-                  d.status === 'taken'
-                    ? 'Taken'
-                    : d.status === 'taken_late'
-                    ? 'Taken Late'
-                    : d.status === 'not_taken'
-                    ? 'Missed'
-                    : 'Upcoming';
-
-                return (
-                  <View key={d.id || index} style={styles.scheduleRow}>
-                    <View style={styles.timeCol}>
-                      <Text style={styles.timeText}>{d.time || d.scheduled_time}</Text>
-                      <Text style={styles.slotSubtext}>
-                        {d.meal_relation === 'after' ? 'After' : 'Before'} {d.slot || d.meal_slot}
-                      </Text>
-                    </View>
-
-                    <View style={styles.medCol}>
-                      <Text style={styles.medText}>{d.medicine_name}</Text>
-                      <Text style={styles.doseSubtext}>
-                        {d.tablets ? `${d.tablets} tablet${d.tablets > 1 ? 's' : ''}` : d.dose || '1 tablet'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.statusCol}>
-                      <Text style={[styles.statusText, { color: statusColor }]}>
-                        {statusLabel}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
+            {/* 3. Today's Schedule Timeline (Divided by Meal Sessions) */}
+            <View style={styles.scheduleSection}>
+              <Text style={styles.sectionHeading}>TODAY&apos;S SCHEDULE</Text>
+              <TodayTimeline doses={doses} onAnswerDose={handleAnswerDose} />
             </View>
-          )}
-        </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
