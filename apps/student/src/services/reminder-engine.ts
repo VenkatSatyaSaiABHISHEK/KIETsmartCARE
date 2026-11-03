@@ -20,14 +20,15 @@ if (Platform.OS !== 'web') {
   });
 }
 
-const ANDROID_CHANNEL_ID = 'kiet_smart_care_reminders';
+// Android channel configuration
+const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v2';
 export const DOSE_NOTIFICATION_CATEGORY = 'DOSE_REMINDER_ACTIONS';
 
 export class ReminderEngine {
   private static isInitialized = false;
 
   /**
-   * Initialize notification channels (High-importance Android channel with custom chime sound)
+   * Initialize notification channels (High-importance Android channel with custom chime sound & full alarm privileges)
    */
   static async init(): Promise<boolean> {
     if (this.isInitialized) return true;
@@ -39,20 +40,30 @@ export class ReminderEngine {
 
     try {
       if (Platform.OS === 'android') {
+        // Android sound name for raw resource is 'chime_reminder' (without extension) or 'default'
         await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-          name: 'Medicine Dose Reminders',
-          description: 'High-importance campus healthcare dose reminders tied to meals',
+          name: 'KIET Medicine Alarms',
+          description: 'High-importance campus healthcare dose reminders that ring with sound and vibration',
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 400, 200, 400, 200, 600],
+          vibrationPattern: [0, 500, 250, 500, 250, 800],
           lightColor: '#0284C7',
-          sound: 'chime_reminder.wav',
+          sound: 'chime_reminder',
+          audioAttributes: {
+            usage: Notifications.AndroidAudioUsage.ALARM,
+            contentType: Notifications.AndroidAudioContentType.SONIFICATION,
+            flags: {
+              enforceAudibility: true,
+              requestHardwareAudioVideoSynchronization: false,
+            },
+          },
           lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
           bypassDnd: true,
           enableVibrate: true,
+          showBadge: true,
         });
       }
 
-      // Configure interactive notification action buttons: Taken, Taken late, Not taken
+      // Configure interactive notification action buttons: Taken, Taken late, Missed
       await Notifications.setNotificationCategoryAsync(DOSE_NOTIFICATION_CATEGORY, [
         {
           identifier: 'taken',
@@ -116,7 +127,6 @@ export class ReminderEngine {
       return doses.length;
     }
 
-    // 1. Cancel and rebuild on each sync so they never duplicate
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
       console.log('[REMINDER ENGINE] Previous local notifications cancelled. Rebuilding clean schedule...');
@@ -127,7 +137,6 @@ export class ReminderEngine {
     let scheduledCount = 0;
     const now = new Date();
 
-    // Group active doses by trigger time / slot
     const groupedDoses: Record<string, { triggerDate: Date; relationStr: string; mealStr: string; doses: DoseScheduleRecord[] }> = {};
 
     for (const dose of doses) {
@@ -135,7 +144,6 @@ export class ReminderEngine {
 
       let triggerDate: Date;
 
-      // 1. If explicit scheduled_at ISO timestamp is provided, parse it
       if (dose.scheduled_at) {
         triggerDate = new Date(dose.scheduled_at);
       } else {
@@ -172,7 +180,7 @@ export class ReminderEngine {
           content: {
             title: 'KIET Medicine Alarm 🔔',
             body: bodyText,
-            sound: 'chime_reminder.wav',
+            sound: 'chime_reminder',
             categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
             data: {
               doseId: primaryDoseId,
@@ -233,7 +241,6 @@ export class ReminderEngine {
     const targetDate = new Date();
     targetDate.setHours(hours, minutes + offsetMinutes, 0, 0);
 
-    // If target time today has already passed, schedule for tomorrow
     if (targetDate.getTime() <= Date.now()) {
       targetDate.setDate(targetDate.getDate() + 1);
     }
@@ -277,7 +284,7 @@ export class ReminderEngine {
         content: {
           title: 'Campus Clinic • Medicine Alarm',
           body: 'Scheduled time has arrived! Tablet 1 • After food.',
-          sound: 'chime_reminder.wav',
+          sound: 'chime_reminder',
           categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
           data: {
             doseId: 'test_dose_now',

@@ -26,7 +26,10 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM",
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
@@ -35,7 +38,7 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#000000",
+          "color": "#0284C7",
           "sounds": [
             "./assets/sounds/chime_reminder.wav",
             "./assets/sounds/gentle_bell.wav",
