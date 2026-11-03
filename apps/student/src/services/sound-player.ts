@@ -128,15 +128,19 @@ export async function playAlarmChime(): Promise<void> {
   // --- WEB PLATFORM ---
   // 1. Try playing custom sound asset
   try {
-    if (!currentHtmlAudio) {
-      currentHtmlAudio = new Audio('/sounds/chime_reminder.wav');
-    }
-    currentHtmlAudio.currentTime = 0;
-    currentHtmlAudio.volume = 1.0;
-    const playPromise = currentHtmlAudio.play();
-    if (playPromise !== undefined) {
-      await playPromise;
-      return;
+    if (typeof window !== 'undefined') {
+      if (!currentHtmlAudio && (window as any).Audio) {
+        currentHtmlAudio = new (window as any).Audio('/sounds/chime_reminder.mp3');
+      }
+      if (currentHtmlAudio) {
+        currentHtmlAudio.currentTime = 0;
+        currentHtmlAudio.volume = 1.0;
+        const playPromise = currentHtmlAudio.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          return;
+        }
+      }
     }
   } catch {
     // Fallback to Web Audio synthesizer

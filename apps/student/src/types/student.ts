@@ -36,6 +36,7 @@ export interface DoseScheduleRecord {
   medicine_name: string;
   dose: string;
   scheduled_time: string; // ISO string or "HH:mm"
+  scheduled_at?: string;
   time?: string;
   slot?: string;
   tablets?: number;

@@ -562,19 +562,6 @@ export class StudentApi {
 
     return null;
   }
-            id: json.recovery_inquiry.id,
-            visit_id: json.recovery_inquiry.visit_id,
-            problem_name: 'Recent Consultation Recovery',
-            due_date: 'Today',
-          };
-        }
-      }
-    } catch (apiErr) {
-      console.warn('API getRecoveryInquiry error:', apiErr);
-    }
-
-    return null;
-  }
 
   /**
    * Submit recovery check answer ('better', 'same', 'worse')
