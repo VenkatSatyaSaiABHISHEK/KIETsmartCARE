@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Linking,
-  Platform,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -17,7 +16,7 @@ import { StudentApi } from '../../src/services/student-api';
 import { AuthService } from '../../src/services/auth';
 import { StudentProfileData } from '../../src/types/student';
 import { ReminderEngine } from '../../src/services/reminder-engine';
-import { playAlarmChime, startContinuousAlarm } from '../../src/services/sound-player';
+import { playAlarmChime } from '../../src/services/sound-player';
 import { formatTime12h } from '../../src/constants/shared';
 
 export default function ProfileScreen() {
@@ -27,9 +26,9 @@ export default function ProfileScreen() {
   const [lunch, setLunch] = useState('13:00');
   const [dinner, setDinner] = useState('20:00');
   const [isSaved, setIsSaved] = useState(false);
-  const [testAlarmStatus, setTestAlarmStatus] = useState<string | null>(null);
+  const [soundStatus, setSoundStatus] = useState<string | null>(null);
   const [contacts, setContacts] = useState({
-    clinic: { label: 'College Campus Clinic', phone: '+91-120-2983555' },
+    clinic: { label: 'Campus Health Clinic', phone: '+91-120-2983555' },
     officer: { label: 'Campus Health Officer', phone: '+91-9876543210' },
     doctor: { label: 'Campus OPD Doctor', phone: '+91-9876543211' },
   });
@@ -56,16 +55,10 @@ export default function ProfileScreen() {
   };
 
   const handleTestSound = async () => {
-    setTestAlarmStatus('Playing sound...');
+    setSoundStatus('Playing chime...');
     await playAlarmChime();
-    setTimeout(() => setTestAlarmStatus('Sound verified!'), 1500);
-    setTimeout(() => setTestAlarmStatus(null), 3500);
-  };
-
-  const handleTestOfflineAlarm = async () => {
-    setTestAlarmStatus('Alarm set in 5 seconds! Lock your screen to test.');
-    await ReminderEngine.triggerImmediateAlarmTest(5);
-    setTimeout(() => setTestAlarmStatus(null), 6000);
+    setTimeout(() => setSoundStatus('Chime played successfully'), 1500);
+    setTimeout(() => setSoundStatus(null), 3500);
   };
 
   const handleLogout = async () => {
@@ -85,7 +78,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Profile Header */}
+        {/* Profile Card */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarCircle}>
             <User size={36} color="#0284C7" />
@@ -97,14 +90,14 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Meal Timings Configuration */}
+        {/* Meal Timings Configuration - Simple Student Words */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Clock size={18} color="#0284C7" />
-            <Text style={styles.cardTitle}>Daily Meal Schedule</Text>
+            <Text style={styles.cardTitle}>My Meal Timings</Text>
           </View>
           <Text style={styles.cardDesc}>
-            Medicine reminders automatically coordinate with your meals (±30 mins). Time preview shows 12-hour AM/PM:
+            Medicine alarms automatically adjust around your daily meal times (30 minutes before or after food).
           </Text>
 
           <View style={styles.mealRow}>
@@ -151,46 +144,39 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.saveBtn} onPress={handleSaveMealTimes}>
             <Text style={styles.saveBtnText}>
-              {isSaved ? 'Schedule Updated & Synced!' : 'Save Meal Timings'}
+              {isSaved ? 'Meal Times Saved!' : 'Save Meal Timings'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Diagnostic Audio & Alarm Test Card */}
+        {/* Medicine Alarm Chime */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Volume2 size={18} color="#059669" />
-            <Text style={styles.cardTitle}>Alarm Sound & Background Diagnostics</Text>
+            <Text style={styles.cardTitle}>Reminder Chime</Text>
           </View>
           <Text style={styles.cardDesc}>
-            Verify your phone plays audible chime tones and triggers alarms when backgrounded or locked:
+            Listen to the gentle chime sound that rings when it is time to take your prescribed medicine:
           </Text>
 
-          <View style={styles.diagBtnRow}>
-            <TouchableOpacity style={styles.diagBtn} onPress={handleTestSound}>
-              <Volume2 size={16} color="#0284C7" />
-              <Text style={styles.diagBtnText}>Test Chime Sound</Text>
-            </TouchableOpacity>
+          <TouchableOpacity style={styles.soundTestBtn} onPress={handleTestSound}>
+            <Volume2 size={16} color="#0284C7" />
+            <Text style={styles.soundTestBtnText}>Play Chime Sample</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.diagBtn} onPress={handleTestOfflineAlarm}>
-              <Bell size={16} color="#D97706" />
-              <Text style={styles.diagBtnText}>Test 5s Alarm</Text>
-            </TouchableOpacity>
-          </View>
-
-          {testAlarmStatus && (
+          {soundStatus && (
             <View style={styles.statusToast}>
               <CheckCircle2 size={14} color="#059669" />
-              <Text style={styles.statusToastText}>{testAlarmStatus}</Text>
+              <Text style={styles.statusToastText}>{soundStatus}</Text>
             </View>
           )}
         </View>
 
-        {/* Emergency Contacts */}
+        {/* Campus Clinic Helpline */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Phone size={18} color="#DC2626" />
-            <Text style={styles.cardTitle}>Emergency Helpline</Text>
+            <Text style={styles.cardTitle}>Campus Clinic Helpline</Text>
           </View>
           <TouchableOpacity
             style={styles.contactRow}
@@ -326,27 +312,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  diagBtnRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
-  },
-  diagBtn: {
-    flex: 1,
+  soundTestBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    height: 42,
-    backgroundColor: '#F8FAFC',
+    gap: 8,
+    height: 44,
+    backgroundColor: '#F0F9FF',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#BAE6FD',
+    marginTop: 4,
   },
-  diagBtnText: {
-    fontSize: 12,
+  soundTestBtnText: {
+    fontSize: 13,
     fontWeight: '700',
-    color: '#334155',
+    color: '#0284C7',
   },
   statusToast: {
     flexDirection: 'row',

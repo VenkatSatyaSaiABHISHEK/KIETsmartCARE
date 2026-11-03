@@ -92,13 +92,14 @@ export async function POST(req: NextRequest) {
       dinner: mealTimesData?.dinner ? mealTimesData.dinner.slice(0, 5) : "20:00",
     };
 
+    // Even if the student has logged in before, logging into a new mobile requires system authorization check
     const session = {
       user_id: student.id,
       roll_number: student.roll_number,
       full_name: student.name,
       email: `${cleanRoll.toLowerCase()}@kiet.edu`,
       is_first_login: isFirstLogin,
-      has_consented: true,
+      has_consented: false, // New mobile device always checks permissions
       has_completed_setup: true,
     };
 
@@ -128,4 +129,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-
