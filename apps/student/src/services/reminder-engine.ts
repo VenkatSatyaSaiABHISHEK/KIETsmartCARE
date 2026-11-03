@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { DoseScheduleRecord, MealTimesConfig } from '../types/student';
+import { DoseScheduleRecord, MealTimesConfig, StudentProfileData } from '../types/student';
 import { OfflineQueue } from './offline-queue';
 import {
   BEFORE_MEAL_OFFSET_MINUTES,
@@ -9,7 +9,7 @@ import {
   formatTime12h,
 } from '../constants/shared';
 
-// Setup foreground notification handler
+// Foreground notification presentation options
 if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -21,7 +21,7 @@ if (Platform.OS !== 'web') {
 }
 
 // Android channel configuration
-const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v2';
+const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v3';
 export const DOSE_NOTIFICATION_CATEGORY = 'DOSE_REMINDER_ACTIONS';
 
 export class ReminderEngine {
@@ -40,7 +40,6 @@ export class ReminderEngine {
 
     try {
       if (Platform.OS === 'android') {
-        // Android sound name for raw resource is 'chime_reminder' (without extension) or 'default'
         await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
           name: 'KIET Medicine Alarms',
           description: 'High-importance campus healthcare dose reminders that ring with sound and vibration',
@@ -63,21 +62,21 @@ export class ReminderEngine {
         });
       }
 
-      // Configure interactive notification action buttons: Taken, Taken late, Missed
+      // Configure interactive notification action buttons: Taken, Taken Late, Not Taken
       await Notifications.setNotificationCategoryAsync(DOSE_NOTIFICATION_CATEGORY, [
         {
           identifier: 'taken',
-          buttonTitle: 'Taken',
+          buttonTitle: '✓ Taken',
           options: { opensAppToForeground: false },
         },
         {
           identifier: 'taken_late',
-          buttonTitle: 'Taken Late',
+          buttonTitle: '🕒 Taken Late',
           options: { opensAppToForeground: false },
         },
         {
           identifier: 'not_taken',
-          buttonTitle: 'Missed',
+          buttonTitle: '✕ Not Taken',
           options: { opensAppToForeground: true },
         },
       ]);
@@ -113,12 +112,14 @@ export class ReminderEngine {
 
   /**
    * Sync schedule and rebuild ALL local scheduled notifications.
-   * Cancels all previous notifications so they never duplicate.
-   * Works completely offline!
+   * Formats professional headline and message matching data rules:
+   * Title: "{firstName}, time for your medicine."
+   * Body: "{mealRelation} {mealSlot}: Tablet 1 (2 tablets)"
    */
   static async syncAndScheduleAll(
     doses: DoseScheduleRecord[],
-    mealTimes: MealTimesConfig = DEFAULT_MEAL_TIMES
+    mealTimes: MealTimesConfig = DEFAULT_MEAL_TIMES,
+    profile?: StudentProfileData | null
   ): Promise<number> {
     await this.init();
 
@@ -136,6 +137,8 @@ export class ReminderEngine {
 
     let scheduledCount = 0;
     const now = new Date();
+
+    const firstName = profile?.full_name ? profile.full_name.trim().split(' ')[0] : 'Student';
 
     const groupedDoses: Record<string, { triggerDate: Date; relationStr: string; mealStr: string; doses: DoseScheduleRecord[] }> = {};
 
@@ -157,8 +160,9 @@ export class ReminderEngine {
 
       if (triggerDate > now) {
         const key = triggerDate.toISOString();
-        const relationStr = dose.meal_relation === 'after' ? 'after' : 'before';
-        const mealStr = (dose.meal_slot || dose.slot || 'meal').toLowerCase();
+        const relationStr = dose.meal_relation === 'after' ? 'After' : 'Before';
+        const rawSlot = (dose.meal_slot || dose.slot || 'food').toLowerCase();
+        const mealStr = rawSlot.charAt(0).toUpperCase() + rawSlot.slice(1);
 
         if (!groupedDoses[key]) {
           groupedDoses[key] = { triggerDate, relationStr, mealStr, doses: [] };
@@ -169,17 +173,22 @@ export class ReminderEngine {
 
     for (const key of Object.keys(groupedDoses)) {
       const group = groupedDoses[key];
-      const medListStr = group.doses.map((d) => `${d.medicine_name} (${d.dose || (d.tablets ? `${d.tablets} tab` : '1 dose')})`).join(', ');
-      const displayTimeStr = formatTime12h(group.triggerDate.toISOString());
-      const bodyText = `${medListStr} • ${group.relationStr} ${group.mealStr} (${displayTimeStr}).`;
+      const medListStr = group.doses
+        .map((d) => `${d.medicine_name || 'Tablet'} (${d.tablets ? `${d.tablets} tablets` : d.dose || '1 tablet'})`)
+        .join(', ');
+
+      // Professional Clean Notification Format
+      const notificationTitle = `${firstName}, time for your medicine`;
+      const notificationBody = `${group.relationStr} ${group.mealStr}: ${medListStr}`;
+
       const primaryDoseId = group.doses[0].id;
       const allDoseIds = group.doses.map((d) => d.id);
 
       try {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: 'KIET Medicine Alarm 🔔',
-            body: bodyText,
+            title: notificationTitle,
+            body: notificationBody,
             sound: 'chime_reminder',
             categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
             data: {
@@ -253,13 +262,15 @@ export class ReminderEngine {
    */
   static async recordDoseResponse(
     doseId: string,
-    response: 'taken' | 'taken_late' | 'not_taken'
+    response: 'taken' | 'taken_late' | 'not_taken',
+    lateMinutes = 0
   ): Promise<void> {
-    console.log(`[REMINDER ENGINE] Recording dose response: ${doseId} -> ${response}`);
+    console.log(`[REMINDER ENGINE] Recording dose response: ${doseId} -> ${response} (lateMinutes: ${lateMinutes})`);
 
     await OfflineQueue.enqueue('DOSE_RESPONSE', {
       dose_id: doseId,
       status: response,
+      late_minutes: lateMinutes,
       answered_at: new Date().toISOString(),
     });
 
@@ -267,10 +278,9 @@ export class ReminderEngine {
   }
 
   /**
-   * Diagnostic / Tester Trigger: Schedules an automated alarm with custom chime sound
-   * to fire in `secondsDelay` seconds (default 3s). Works even if the student leaves or locks the phone!
+   * Diagnostic / Tester Trigger
    */
-  static async triggerImmediateAlarmTest(secondsDelay = 3): Promise<void> {
+  static async triggerImmediateAlarmTest(secondsDelay = 3, firstName = 'Student'): Promise<void> {
     await this.init();
 
     if (Platform.OS === 'web') {
@@ -282,8 +292,8 @@ export class ReminderEngine {
       const triggerDate = new Date(Date.now() + secondsDelay * 1000);
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Campus Clinic • Medicine Alarm',
-          body: 'Scheduled time has arrived! Tablet 1 • After food.',
+          title: `${firstName}, time for your medicine`,
+          body: 'After food: Tablet 1 (1 tablet)',
           sound: 'chime_reminder',
           categoryIdentifier: DOSE_NOTIFICATION_CATEGORY,
           data: {
