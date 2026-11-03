@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { KeyRound, ShieldCheck, CheckCircle2, X, Info, Lock } from 'lucide-react-native';
+import { KeyRound, ShieldCheck, CheckCircle2, X, Info, Lock, Sparkles } from 'lucide-react-native';
 import { AuthService } from '../src/services/auth';
+import { WobnimoMascot, WobnimoState } from '../src/components/WobnimoMascot';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -41,6 +42,24 @@ export default function LoginScreen() {
   const [resetConfirmPass, setResetConfirmPass] = useState('');
   const [forgotError, setForgotError] = useState<string | null>(null);
   const [isForgotLoading, setIsForgotLoading] = useState(false);
+
+  // Wobnimo animated mascot state
+  const [mascotState, setMascotState] = useState<WobnimoState>('idle');
+
+  // React to student actions
+  useEffect(() => {
+    if (isLoading || isForgotLoading) {
+      setMascotState('working');
+    } else if (errorMessage || forgotError) {
+      setMascotState('error');
+    } else if (successMessage) {
+      setMascotState('celebrating');
+    } else if (rollNumber.length > 0 || password.length > 0) {
+      setMascotState('listening');
+    } else {
+      setMascotState('idle');
+    }
+  }, [isLoading, isForgotLoading, errorMessage, forgotError, successMessage, rollNumber, password]);
 
   const handleLogin = async () => {
     setErrorMessage(null);
@@ -353,6 +372,25 @@ export default function LoginScreen() {
               </View>
             )}
           </View>
+
+          {/* Wobnimo Animated Mascot Stage */}
+          <View style={styles.mascotStage}>
+            <WobnimoMascot character="boo" state={mascotState} size={110} />
+            <View style={styles.mascotLabelWrap}>
+              <Sparkles size={13} color="#38BDF8" />
+              <Text style={styles.mascotLabel}>
+                {mascotState === 'working'
+                  ? 'Verifying identity...'
+                  : mascotState === 'error'
+                  ? 'Oops! Check your details'
+                  : mascotState === 'celebrating'
+                  ? 'Welcome aboard!'
+                  : mascotState === 'listening'
+                  ? 'Typing roll number...'
+                  : 'Campus Health Assistant'}
+              </Text>
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -630,6 +668,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  mascotStage: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+    gap: 8,
+  },
+  mascotLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(2, 132, 199, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+  },
+  mascotLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#38BDF8',
+    letterSpacing: 0.5,
   },
   modalOverlay: {
     flex: 1,
