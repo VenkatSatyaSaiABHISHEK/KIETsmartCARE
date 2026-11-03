@@ -21,7 +21,7 @@ if (Platform.OS !== 'web') {
 }
 
 // Android channel configuration
-const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v3';
+const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v4';
 export const DOSE_NOTIFICATION_CATEGORY = 'DOSE_REMINDER_ACTIONS';
 
 export class ReminderEngine {
@@ -158,14 +158,21 @@ export class ReminderEngine {
         );
       }
 
-      if (triggerDate > now) {
+      const diffMs = triggerDate.getTime() - now.getTime();
+      // Schedule if in the future, or trigger immediately (in 2 seconds) if due within the last 15 minutes and still untaken
+      let effectiveTriggerDate = triggerDate;
+      if (diffMs <= 0 && Math.abs(diffMs) <= 15 * 60 * 1000) {
+        effectiveTriggerDate = new Date(Date.now() + 2000);
+      }
+
+      if (effectiveTriggerDate.getTime() > now.getTime()) {
         const key = triggerDate.toISOString();
         const relationStr = dose.meal_relation === 'after' ? 'After' : 'Before';
         const rawSlot = (dose.meal_slot || dose.slot || 'food').toLowerCase();
         const mealStr = rawSlot.charAt(0).toUpperCase() + rawSlot.slice(1);
 
         if (!groupedDoses[key]) {
-          groupedDoses[key] = { triggerDate, relationStr, mealStr, doses: [] };
+          groupedDoses[key] = { triggerDate: effectiveTriggerDate, relationStr, mealStr, doses: [] };
         }
         groupedDoses[key].doses.push(dose);
       }
@@ -199,6 +206,7 @@ export class ReminderEngine {
             priority: Notifications.AndroidNotificationPriority.MAX,
           },
           trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: group.triggerDate,
             channelId: ANDROID_CHANNEL_ID,
           },

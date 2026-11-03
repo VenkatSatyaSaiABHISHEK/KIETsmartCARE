@@ -12,6 +12,19 @@ import { DEFAULT_MEAL_TIMES } from '../constants/shared';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2500): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
 export class StudentApi {
   /**
    * Fetch student's profile and personalized meal timings
@@ -24,7 +37,7 @@ export class StudentApi {
     // 1. Try Backend API
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetch(`${API_BASE_URL}/api/student/dashboard?${q}`);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.student) {
@@ -166,10 +179,10 @@ export class StudentApi {
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
-    // 1. Try Backend API
+    // 1. Try Backend API with fast timeout
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetch(`${API_BASE_URL}/api/student/dashboard?${q}`);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.doses)) {
@@ -180,7 +193,7 @@ export class StudentApi {
       console.warn('API getDoses fallback to Supabase:', apiErr);
     }
 
-    // 2. Direct Supabase Fallback
+    // 2. Direct Supabase Fallback (joins dose_events for 100% real-time adherence sync)
     try {
       if (studentId) {
         const { data, error } = await supabase
@@ -195,6 +208,10 @@ export class StudentApi {
             visit_medications (
               dose,
               medicines ( name )
+            ),
+            dose_events (
+              response,
+              responded_at
             )
           `)
           .eq('student_id', studentId)
@@ -205,6 +222,8 @@ export class StudentApi {
             const med = d.visit_medications;
             const dateObj = new Date(d.scheduled_at);
             const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const latestEvent = d.dose_events && d.dose_events.length > 0 ? d.dose_events[0] : null;
+            const effectiveStatus = latestEvent?.response || d.status || 'scheduled';
 
             return {
               id: d.id,
@@ -212,9 +231,12 @@ export class StudentApi {
               medicine_name: med?.medicines?.name || 'Medication',
               dose: med?.dose || '1 tablet',
               scheduled_time: timeStr,
+              time: timeStr,
+              scheduled_at: d.scheduled_at,
               meal_slot: d.slot as any,
+              slot: d.slot as any,
               meal_relation: d.meal_relation || 'after',
-              status: (d.status || 'scheduled') as any,
+              status: effectiveStatus as any,
             };
           });
         }
@@ -228,6 +250,7 @@ export class StudentApi {
 
   /**
    * Submit student's adherence action (Taken, Taken Late, Not Taken)
+   * Updates BOTH local database and backend API immediately so all screens sync without lag
    */
   static async submitDoseAnswer(
     doseId: string,
@@ -235,9 +258,33 @@ export class StudentApi {
   ): Promise<void> {
     const session = await AuthService.getCurrentSession();
     const studentId = session?.user_id;
+    const adherenceResponse = status === 'taken' ? 'taken' : status === 'taken_late' ? 'taken_late' : 'not_taken';
 
+    // 1. Direct Supabase update for immediate cross-device sync
     try {
-      await fetch(`${API_BASE_URL}/api/student/action`, {
+      await supabase
+        .from('dose_schedule')
+        .update({ status: adherenceResponse })
+        .eq('id', doseId);
+
+      if (studentId) {
+        // Also insert/upsert to dose_events
+        await supabase
+          .from('dose_events')
+          .insert({
+            schedule_id: doseId,
+            student_id: studentId,
+            response: adherenceResponse,
+            responded_at: new Date().toISOString(),
+          });
+      }
+    } catch (dbErr) {
+      console.warn('Direct Supabase submitDoseAnswer error:', dbErr);
+    }
+
+    // 2. Call Backend API
+    try {
+      await fetchWithTimeout(`${API_BASE_URL}/api/student/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -246,7 +293,7 @@ export class StudentApi {
           dose_id: doseId,
           status,
         }),
-      });
+      }, 3000);
     } catch (e) {
       console.warn('API submitDoseAnswer error:', e);
     }

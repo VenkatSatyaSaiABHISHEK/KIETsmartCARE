@@ -82,6 +82,15 @@ export async function POST(req: NextRequest) {
         eventResult = data;
       }
 
+      // CRITICAL: Synchronize dose_schedule table directly so ALL web, mobile, and doctor views reflect taken status immediately
+      await supabase
+        .from("dose_schedule")
+        .update({
+          status: adherenceResponse,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", dose_id);
+
       return NextResponse.json(
         {
           success: true,

@@ -64,9 +64,10 @@ export async function playAlarmChime(): Promise<void> {
 
       const { sound } = await Audio.Sound.createAsync(
         require('../../assets/sounds/chime_reminder.wav'),
-        { shouldPlay: true, isLooping: false, volume: 1.0 }
+        { shouldPlay: false, isLooping: false, volume: 1.0 }
       );
       soundObject = sound;
+      await soundObject.setVolumeAsync(1.0);
       await soundObject.playAsync();
       return;
     } catch (err) {
@@ -150,9 +151,11 @@ export async function startContinuousAlarm(): Promise<void> {
 
       const { sound } = await Audio.Sound.createAsync(
         require('../../assets/sounds/chime_reminder.wav'),
-        { shouldPlay: true, isLooping: true, volume: 1.0 }
+        { shouldPlay: false, isLooping: true, volume: 1.0 }
       );
       soundObject = sound;
+      await soundObject.setIsLoopingAsync(true);
+      await soundObject.setVolumeAsync(1.0);
       await soundObject.playAsync();
       return;
     } catch (e) {

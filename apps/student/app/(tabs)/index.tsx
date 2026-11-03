@@ -146,13 +146,38 @@ export default function StudentHomeScreen() {
     stopAlarm();
     setActiveAlarmDose(null);
 
-    // Optimistically update UI
+    // Identify target dose and all sibling doses due at the exact same meal/time slot
+    const targetDose = doses.find((d) => d.id === doseId);
+    const relatedDoses = targetDose
+      ? doses.filter(
+          (d) =>
+            (d.status === 'scheduled' || d.status === 'unconfirmed') &&
+            (d.id === doseId ||
+              (d.scheduled_at && d.scheduled_at === targetDose.scheduled_at) ||
+              ((d.time || d.scheduled_time) && (d.time || d.scheduled_time) === (targetDose.time || targetDose.scheduled_time)))
+        )
+      : [];
+
+    const dosesToRecord = relatedDoses.length > 0 ? relatedDoses : targetDose ? [targetDose] : [];
+
+    // Mark as alarmed locally so 1-second loop never re-triggers them
+    dosesToRecord.forEach((d) => alarmedDoseIdsRef.current.add(d.id));
+
+    // Optimistically update UI for all sibling doses together
     setDoses((prev) =>
-      prev.map((d) => (d.id === doseId ? { ...d, status } : d))
+      prev.map((d) =>
+        dosesToRecord.some((td) => td.id === d.id) ? { ...d, status } : d
+      )
     );
 
-    await StudentApi.submitDoseAnswer(doseId, status);
-    await ReminderEngine.recordDoseResponse(doseId, status);
+    // Submit answers for all sibling doses in parallel
+    await Promise.all(
+      dosesToRecord.map((d) => StudentApi.submitDoseAnswer(d.id, status))
+    );
+    await Promise.all(
+      dosesToRecord.map((d) => ReminderEngine.recordDoseResponse(d.id, status))
+    );
+
     await loadStudentData();
   };
 
