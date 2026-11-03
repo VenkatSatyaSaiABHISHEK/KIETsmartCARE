@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { KeyRound, ShieldCheck, CheckCircle2, X, Info, Lock, Sparkles } from 'lucide-react-native';
+import { KeyRound, ShieldCheck, CheckCircle2, X } from 'lucide-react-native';
 import { AuthService } from '../src/services/auth';
 import { WobnimoMascot, WobnimoState } from '../src/components/WobnimoMascot';
 
@@ -82,9 +82,12 @@ export default function LoginScreen() {
         return;
       }
 
-      // Check if first-time login (password is roll number or initial seed)
       const enteredPassUpper = password.trim().toUpperCase();
-      const isInitialPass = enteredPassUpper === cleanRoll || password === 'kiet123' || password === 'welcome' || result.session?.is_first_login;
+      const isInitialPass =
+        enteredPassUpper === cleanRoll ||
+        password === 'kiet123' ||
+        password === 'welcome' ||
+        result.session?.is_first_login;
 
       if (isInitialPass) {
         setIsFirstLoginChange(true);
@@ -162,24 +165,24 @@ export default function LoginScreen() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data.success) {
-        setForgotError(data.error || 'Student verification failed. Please check your roll number and phone.');
+        setForgotError(data.error || 'Verification failed. Please check your details.');
         return;
       }
 
-      setVerifiedStudentName(data.student_name || 'Student');
+      setVerifiedStudentName(data.studentName || data.student_name || 'Student');
       setForgotStep('new_password');
     } catch {
-      setForgotError('Connection error. Please try again.');
+      setForgotError('Network error connecting to reset service.');
     } finally {
       setIsForgotLoading(false);
     }
   };
 
-  // Step 2: Set New Password
-  const handleResetPasswordSubmit = async () => {
+  // Step 2: Submit New Password
+  const handleResetPassword = async () => {
     setForgotError(null);
     if (resetNewPass.length < 6) {
-      setForgotError('New password must be at least 6 characters.');
+      setForgotError('Password must be at least 6 characters long.');
       return;
     }
     if (resetNewPass !== resetConfirmPass) {
@@ -208,188 +211,155 @@ export default function LoginScreen() {
       }
 
       setIsForgotModalOpen(false);
-      setSuccessMessage('Password reset successfully! Please log in with your new password.');
+      setSuccessMessage('Password reset successfully! Please sign in with your new password.');
       setPassword(resetNewPass);
       setRollNumber(forgotRoll.trim().toUpperCase());
     } catch {
-      setForgotError('Connection error. Please try again.');
+      setForgotError('Network error updating password.');
     } finally {
       setIsForgotLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Brand Header */}
-          <View style={styles.brandContainer}>
-            <View style={styles.logoBadge}>
-              <ShieldCheck size={28} color="#0284C7" strokeWidth={2.4} />
-            </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header */}
+          <View style={styles.header}>
             <Text style={styles.brandTitle}>KIET SMART CARE</Text>
-            <Text style={styles.brandSubtitle}>Student Healthcare & Medication Alarms</Text>
+            <Text style={styles.title}>Student Portal</Text>
+            <Text style={styles.subtext}>
+              Sign in using your institutional roll number and password.
+            </Text>
           </View>
 
-          {/* First Login Highlight Notice */}
-          {!isFirstLoginChange && (
-            <View style={styles.firstLoginBanner}>
-              <View style={styles.firstLoginIcon}>
-                <Info size={18} color="#0284C7" />
-              </View>
-              <View style={styles.firstLoginTextWrap}>
-                <Text style={styles.firstLoginTitle}>First Time Logging In?</Text>
-                <Text style={styles.firstLoginDesc}>
-                  Your <Text style={styles.boldText}>Username</Text> is your Roll Number (e.g. 23B21A4565). Your <Text style={styles.boldText}>Initial Password</Text> is also your Roll Number. You will be prompted to set your personal password immediately.
-                </Text>
-              </View>
+          {/* Success Notification */}
+          {successMessage && (
+            <View style={styles.successBox}>
+              <CheckCircle2 size={16} color="#059669" />
+              <Text style={styles.successText}>{successMessage}</Text>
             </View>
           )}
 
-          {/* Card Container */}
-          <View style={styles.card}>
-            {isFirstLoginChange ? (
-              // First Login Force Password Change View
-              <View>
-                <View style={styles.headerRow}>
-                  <View style={styles.headerIconCircle}>
-                    <Lock size={20} color="#0284C7" />
-                  </View>
-                  <View>
-                    <Text style={styles.formTitle}>Set Your New Password</Text>
-                    <Text style={styles.formSubtitle}>Choose a secure password for future logins</Text>
-                  </View>
-                </View>
+          {/* Error Notification */}
+          {errorMessage && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
 
-                {errorMessage && (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                  </View>
-                )}
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>New Password</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter new password (min 6 chars)"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Confirm New Password</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm new password"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                  onPress={handlePasswordChange}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Set Password & Continue</Text>
-                  )}
-                </TouchableOpacity>
+          {isFirstLoginChange ? (
+            /* First Login: Force Set New Password */
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>New Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="Minimum 6 characters"
+                  placeholderTextColor="#999999"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
               </View>
-            ) : (
-              // Standard Login Form
-              <View>
-                <Text style={styles.formTitle}>Student Sign In</Text>
-                <Text style={styles.formSubtitle}>Enter your institutional roll number</Text>
 
-                {errorMessage && (
-                  <View style={styles.errorBox}>
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                  </View>
-                )}
-
-                {successMessage && (
-                  <View style={styles.successBox}>
-                    <CheckCircle2 size={16} color="#059669" />
-                    <Text style={styles.successText}>{successMessage}</Text>
-                  </View>
-                )}
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Roll Number</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 23B21A4565"
-                    placeholderTextColor="#94A3B8"
-                    value={rollNumber}
-                    onChangeText={(txt) => setRollNumber(txt.toUpperCase())}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                  />
-                </View>
-
-                <View style={styles.fieldGroup}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.label}>Password</Text>
-                    <TouchableOpacity onPress={openForgotModal}>
-                      <Text style={styles.forgotLink}>Forgot?</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter password (Roll Number if first time)"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.primaryButton, isLoading && styles.disabledButton]}
-                  onPress={handleLogin}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Sign In</Text>
-                  )}
-                </TouchableOpacity>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Confirm New Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Re-enter new password"
+                  placeholderTextColor="#999999"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
               </View>
-            )}
+
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handlePasswordChange}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitBtnText}>Set Password & Continue</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Standard Login Form */
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Roll Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={rollNumber}
+                  onChangeText={(t) => setRollNumber(t.toUpperCase())}
+                  placeholder="e.g. 2400290129999"
+                  placeholderTextColor="#999999"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Enter password"
+                  placeholderTextColor="#999999"
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handleLogin}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitBtnText}>Sign In</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.forgotBtn}
+                onPress={openForgotModal}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.forgotBtnText}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Clean Small Reminder Text at the bottom */}
+          <View style={styles.reminderFootnote}>
+            <Text style={styles.reminderFootnoteText}>
+              First-time sign-in? Your default password is your institutional Roll Number.
+            </Text>
           </View>
 
-          {/* Wobnimo Animated Mascot Stage */}
-          <View style={styles.mascotStage}>
+          {/* Wobnimo Mascot Animated in the lower white space */}
+          <View style={styles.mascotContainer}>
             <WobnimoMascot character="boo" state={mascotState} size={110} />
-            <View style={styles.mascotLabelWrap}>
-              <Sparkles size={13} color="#38BDF8" />
-              <Text style={styles.mascotLabel}>
-                {mascotState === 'working'
-                  ? 'Verifying identity...'
-                  : mascotState === 'error'
-                  ? 'Oops! Check your details'
-                  : mascotState === 'celebrating'
-                  ? 'Welcome aboard!'
-                  : mascotState === 'listening'
-                  ? 'Typing roll number...'
-                  : 'Campus Health Assistant'}
-              </Text>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -399,86 +369,101 @@ export default function LoginScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Reset Student Password</Text>
+              <View style={styles.modalHeaderIcon}>
+                <KeyRound size={20} color="#0284C7" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Reset Password</Text>
+                <Text style={styles.modalSub}>Verify your student account to create a new password</Text>
+              </View>
               <TouchableOpacity onPress={() => setIsForgotModalOpen(false)}>
-                <X size={20} color="#64748B" />
+                <X size={20} color="#666666" />
               </TouchableOpacity>
             </View>
 
             {forgotError && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{forgotError}</Text>
+              <View style={styles.modalErrorBox}>
+                <Text style={styles.modalErrorText}>{forgotError}</Text>
               </View>
             )}
 
             {forgotStep === 'verify' ? (
-              <View>
-                <Text style={styles.modalDesc}>
-                  Enter your roll number and registered phone number to verify your student account.
-                </Text>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Roll Number</Text>
+              <View style={styles.modalForm}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Student Roll Number</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="e.g. 23B21A4565"
-                    placeholderTextColor="#94A3B8"
                     value={forgotRoll}
                     onChangeText={(t) => setForgotRoll(t.toUpperCase())}
+                    placeholder="e.g. 2400290129999"
                     autoCapitalize="characters"
                   />
                 </View>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Registered Phone Number</Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Registered Phone Number</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="e.g. 9876543210"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="phone-pad"
                     value={forgotPhone}
                     onChangeText={setForgotPhone}
+                    placeholder="e.g. 9876543210"
+                    keyboardType="phone-pad"
                   />
                 </View>
+
                 <TouchableOpacity
-                  style={[styles.primaryButton, isForgotLoading && styles.disabledButton]}
+                  style={styles.modalSubmitBtn}
                   onPress={handleVerifyIdentity}
                   disabled={isForgotLoading}
+                  activeOpacity={0.8}
                 >
-                  {isForgotLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Verify Account</Text>}
+                  {isForgotLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalSubmitBtnText}>Verify Identity</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             ) : (
-              <View>
-                <Text style={styles.modalDesc}>
-                  Verified for <Text style={styles.boldText}>{verifiedStudentName}</Text>. Set your new password below.
-                </Text>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>New Password</Text>
+              <View style={styles.modalForm}>
+                <View style={styles.identitySuccessBadge}>
+                  <CheckCircle2 size={16} color="#059669" />
+                  <Text style={styles.identitySuccessText}>Verified for {verifiedStudentName}</Text>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>New Password</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Min 6 characters"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry
                     value={resetNewPass}
                     onChangeText={setResetNewPass}
+                    placeholder="Minimum 6 characters"
+                    secureTextEntry
                   />
                 </View>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Confirm Password</Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Confirm New Password</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Confirm new password"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry
                     value={resetConfirmPass}
                     onChangeText={setResetConfirmPass}
+                    placeholder="Re-enter new password"
+                    secureTextEntry
                   />
                 </View>
+
                 <TouchableOpacity
-                  style={[styles.primaryButton, isForgotLoading && styles.disabledButton]}
-                  onPress={handleResetPasswordSubmit}
+                  style={styles.modalSubmitBtn}
+                  onPress={handleResetPassword}
                   disabled={isForgotLoading}
+                  activeOpacity={0.8}
                 >
-                  {isForgotLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Update Password</Text>}
+                  {isForgotLoading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalSubmitBtnText}>Save New Password</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             )}
@@ -490,235 +475,213 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    paddingHorizontal: 32,
+    paddingTop: 60,
+    paddingBottom: 24,
     justifyContent: 'center',
-    flexGrow: 1,
   },
-  brandContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(2, 132, 199, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+  header: {
+    marginBottom: 28,
   },
   brandTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1.2,
-  },
-  brandSubtitle: {
-    fontSize: 13,
-    color: '#94A3B8',
-    marginTop: 4,
-  },
-  firstLoginBanner: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(2, 132, 199, 0.12)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.28)',
-    padding: 14,
-    marginBottom: 18,
-    gap: 12,
-  },
-  firstLoginIcon: {
-    marginTop: 2,
-  },
-  firstLoginTextWrap: {
-    flex: 1,
-  },
-  firstLoginTitle: {
-    fontSize: 14,
+    fontSize: 12,
+    letterSpacing: 1,
     fontWeight: '700',
-    color: '#38BDF8',
+    color: '#0284C7',
     marginBottom: 4,
   },
-  firstLoginDesc: {
-    fontSize: 12,
-    color: '#CBD5E1',
-    lineHeight: 18,
-  },
-  boldText: {
+  title: {
+    fontSize: 26,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#121212',
+    letterSpacing: -0.4,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  headerIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E0F2FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  formSubtitle: {
+  subtext: {
     fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
-    marginBottom: 16,
-  },
-  errorBox: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 14,
-  },
-  errorText: {
-    fontSize: 13,
-    color: '#DC2626',
-    fontWeight: '500',
+    color: '#555555',
+    marginTop: 6,
+    lineHeight: 18,
   },
   successBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    padding: 12,
+    borderRadius: 8,
     backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 14,
+    borderColor: '#A7F3D0',
+    marginBottom: 20,
   },
   successText: {
     flex: 1,
-    fontSize: 13,
-    color: '#059669',
-    fontWeight: '500',
-  },
-  fieldGroup: {
-    marginBottom: 14,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
-  },
-  forgotLink: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0284C7',
+    color: '#065F46',
+  },
+  errorBox: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#991B1B',
+  },
+  form: {
+    gap: 16,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#121212',
   },
   input: {
-    height: 48,
-    backgroundColor: '#F8FAFC',
+    height: 52,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#0F172A',
+    borderColor: '#EBEBEB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#121212',
+    backgroundColor: '#FAFAFA',
   },
-  primaryButton: {
-    height: 50,
-    backgroundColor: '#0284C7',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  submitBtn: {
     marginTop: 8,
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: '#0A0A0A',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  primaryButtonText: {
-    fontSize: 16,
+  submitBtnText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  mascotStage: {
+  forgotBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  forgotBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0284C7',
+  },
+  reminderFootnote: {
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 10,
+    paddingHorizontal: 8,
+  },
+  reminderFootnoteText: {
+    fontSize: 11,
+    color: '#888888',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  mascotContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-    gap: 8,
-  },
-  mascotLabelWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(2, 132, 199, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-  },
-  mascotLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#38BDF8',
-    letterSpacing: 0.5,
+    marginTop: 6,
+    height: 120,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 22,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 16,
+  },
+  modalHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F0F9FF',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#121212',
   },
-  modalDesc: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 16,
-    lineHeight: 18,
+  modalSub: {
+    fontSize: 12,
+    color: '#555555',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  modalErrorBox: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 14,
+  },
+  modalErrorText: {
+    fontSize: 12,
+    color: '#991B1B',
+  },
+  modalForm: {
+    gap: 14,
+  },
+  modalSubmitBtn: {
+    backgroundColor: '#0284C7',
+    height: 48,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  modalSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  identitySuccessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  identitySuccessText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#065F46',
   },
 });
