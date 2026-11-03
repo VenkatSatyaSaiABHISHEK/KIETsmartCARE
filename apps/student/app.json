@@ -47,7 +47,16 @@
           ]
         }
       ],
-      "expo-asset",
+      [
+        "expo-asset",
+        {
+          "assets": [
+            "./assets/sounds/chime_reminder.wav",
+            "./assets/sounds/gentle_bell.wav",
+            "./assets/sounds/voice_dose_reminder.wav"
+          ]
+        }
+      ],
       "expo-secure-store",
       "expo-font"
     ],

@@ -1,11 +1,24 @@
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
+import { Asset } from 'expo-asset';
+import * as Haptics from 'expo-haptics';
 
 let soundObject: Audio.Sound | null = null;
 let audioContext: AudioContext | null = null;
 let alarmLoopInterval: any = null;
 let currentHtmlAudio: HTMLAudioElement | null = null;
 let isRinging = false;
+
+async function resolveSoundUri(): Promise<string | number> {
+  try {
+    const asset = Asset.fromModule(require('../../assets/sounds/chime_reminder.wav'));
+    await asset.downloadAsync();
+    return asset.localUri || asset.uri || require('../../assets/sounds/chime_reminder.wav');
+  } catch (err) {
+    console.warn('[SOUND PLAYER] Asset resolution error, fallback to require:', err);
+    return require('../../assets/sounds/chime_reminder.wav');
+  }
+}
 
 function getAudioContext(): AudioContext | null {
   if (Platform.OS !== 'web') return null;
@@ -51,6 +64,10 @@ export async function playAlarmChime(): Promise<void> {
   // --- NATIVE PLATFORM (ANDROID / IOS) ---
   if (Platform.OS !== 'web') {
     try {
+      try {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch {}
+
       await configureAudioMode();
 
       // Stop previous instance if exists
@@ -62,8 +79,11 @@ export async function playAlarmChime(): Promise<void> {
         soundObject = null;
       }
 
+      const source = await resolveSoundUri();
+      const soundSource = typeof source === 'string' ? { uri: source } : source;
+
       const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/chime_reminder.wav'),
+        soundSource,
         { shouldPlay: false, isLooping: false, volume: 1.0 }
       );
       soundObject = sound;
@@ -149,8 +169,11 @@ export async function startContinuousAlarm(): Promise<void> {
         } catch {}
       }
 
+      const source = await resolveSoundUri();
+      const soundSource = typeof source === 'string' ? { uri: source } : source;
+
       const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/sounds/chime_reminder.wav'),
+        soundSource,
         { shouldPlay: false, isLooping: true, volume: 1.0 }
       );
       soundObject = sound;
