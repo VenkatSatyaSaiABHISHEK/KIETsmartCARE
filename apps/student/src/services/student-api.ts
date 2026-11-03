@@ -241,7 +241,7 @@ export class StudentApi {
     // 1. Try Backend API with fast timeout
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
-      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 2000);
+      const res = await fetchWithTimeout(`${API_BASE_URL}/api/student/dashboard?${q}`, {}, 1500);
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.doses)) {
@@ -249,8 +249,8 @@ export class StudentApi {
           return json.doses;
         }
       }
-    } catch (apiErr) {
-      console.warn('API getDoses fallback to Supabase:', apiErr);
+    } catch {
+      // Quietly fall back to Supabase directly
     }
 
     // 2. Direct Supabase Fallback (joins dose_events for 100% real-time adherence sync)
@@ -426,8 +426,8 @@ export class StudentApi {
           return json.prescriptions;
         }
       }
-    } catch (apiErr) {
-      console.warn('API getPrescriptions error, checking Supabase:', apiErr);
+    } catch {
+      // Quietly fall back to Supabase
     }
 
     // 2. Direct Supabase Fallback
@@ -514,8 +514,8 @@ export class StudentApi {
           return json.history;
         }
       }
-    } catch (apiErr) {
-      console.warn('API getHistory error, checking Supabase:', apiErr);
+    } catch {
+      // Quietly fall back to Supabase
     }
 
     // 2. Direct Supabase Fallback

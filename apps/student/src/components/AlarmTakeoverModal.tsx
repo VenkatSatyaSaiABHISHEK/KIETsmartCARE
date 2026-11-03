@@ -102,6 +102,7 @@ export function AlarmTakeoverModal({
 
   // Scheduled Time Display (12h Asia/Kolkata format)
   const displayTime = formatTime12h(dose.scheduled_at || dose.time || dose.scheduled_time);
+  const [timeDigits, timeMeridian] = displayTime.split(' ');
 
   // Meal Label formatting (Small-caps with letter spacing: e.g. "AFTER LUNCH", "BEFORE BREAKFAST")
   const mealRelation = dose.meal_relation === 'before' ? 'BEFORE' : 'AFTER';
@@ -322,15 +323,27 @@ export function AlarmTakeoverModal({
               {/* Small-Caps Meal Label */}
               <Text style={styles.smallCapsMeal}>{mealLabel}</Text>
 
-              {/* Massive 104px-112px Time Display (Source Serif / Regular / Ink Navy) */}
-              <Text
-                style={[
-                  styles.hugeSerifTime,
-                  isCompactHeight && styles.hugeSerifTimeCompact,
-                ]}
-              >
-                {displayTime}
-              </Text>
+              {/* Massive Time Display on Single Row with Smaller Meridian */}
+              <View style={styles.timeRow}>
+                <Text
+                  style={[
+                    styles.hugeTimeDigits,
+                    isCompactHeight && styles.hugeTimeDigitsCompact,
+                  ]}
+                >
+                  {timeDigits || displayTime}
+                </Text>
+                {timeMeridian ? (
+                  <Text
+                    style={[
+                      styles.smallTimeMeridian,
+                      isCompactHeight && styles.smallTimeMeridianCompact,
+                    ]}
+                  >
+                    {timeMeridian}
+                  </Text>
+                ) : null}
+              </View>
 
               {/* Personal Message in Source Serif 4 (2 lines, never 3 lines) */}
               <Text
@@ -443,18 +456,35 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 10,
   },
-  hugeSerifTime: {
-    fontFamily: Platform.select({ ios: 'SourceSerif4-Regular', android: 'serif', default: 'serif' }),
-    fontSize: 104,
-    fontWeight: '400',
-    color: ALARM_THEME.navy, // #0F1B33
-    letterSpacing: -2,
-    textAlign: 'center',
-    includeFontPadding: false,
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
     marginBottom: 12,
   },
-  hugeSerifTimeCompact: {
-    fontSize: 88,
+  hugeTimeDigits: {
+    fontFamily: Platform.select({ ios: 'SourceSerif4-Regular', android: 'serif', default: 'serif' }),
+    fontSize: 72,
+    fontWeight: '400',
+    color: ALARM_THEME.navy, // #0F1B33
+    letterSpacing: -1.5,
+    includeFontPadding: false,
+  },
+  hugeTimeDigitsCompact: {
+    fontSize: 58,
+  },
+  smallTimeMeridian: {
+    fontFamily: Platform.select({ ios: 'SourceSerif4-Regular', android: 'serif', default: 'serif' }),
+    fontSize: 32,
+    fontWeight: '400',
+    color: ALARM_THEME.navy, // #0F1B33
+    letterSpacing: 0.5,
+    marginLeft: 6,
+    includeFontPadding: false,
+  },
+  smallTimeMeridianCompact: {
+    fontSize: 26,
+    marginLeft: 4,
   },
   personalMessage: {
     fontFamily: Platform.select({ ios: 'SourceSerif4-Regular', android: 'serif', default: 'serif' }),

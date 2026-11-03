@@ -2,7 +2,6 @@ import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Asset } from 'expo-asset';
 import * as Haptics from 'expo-haptics';
-import * as FileSystem from 'expo-file-system';
 import { CHIME_BASE64_MP3 } from '../constants/chime-audio-base64';
 
 let soundObject: Audio.Sound | null = null;
@@ -12,6 +11,16 @@ let currentHtmlAudio: HTMLAudioElement | null = null;
 let isRinging = false;
 let cachedAudioFileUri: string | null = null;
 
+// Safe dynamic loader for native FileSystem (prevents Web bundler crashes)
+function getNativeFileSystem(): typeof import('expo-file-system') | null {
+  if (Platform.OS === 'web') return null;
+  try {
+    return require('expo-file-system');
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
  * Resolves a 100% reliable local file URI on Android/iOS.
  * Writes the embedded base64 MP3 to device cache storage, ensuring zero dependency on network or bundler asset bugs.
@@ -20,18 +29,20 @@ async function resolveSoundUri(): Promise<string> {
   if (Platform.OS !== 'web') {
     if (cachedAudioFileUri) return cachedAudioFileUri;
     try {
-      const targetPath = `${FileSystem.cacheDirectory}chime_reminder.mp3`;
-      const info = await FileSystem.getInfoAsync(targetPath);
-      if (!info.exists || info.size === 0) {
-        await FileSystem.writeAsStringAsync(targetPath, CHIME_BASE64_MP3, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+      const FileSystem = getNativeFileSystem();
+      if (FileSystem && FileSystem.cacheDirectory) {
+        const targetPath = `${FileSystem.cacheDirectory}chime_reminder.mp3`;
+        const info = await FileSystem.getInfoAsync(targetPath);
+        if (!info.exists || info.size === 0) {
+          await FileSystem.writeAsStringAsync(targetPath, CHIME_BASE64_MP3, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        }
+        cachedAudioFileUri = targetPath;
+        return targetPath;
       }
-      cachedAudioFileUri = targetPath;
-      return targetPath;
     } catch (err) {
       console.warn('[SOUND PLAYER] Failed writing local cache sound:', err);
-      return `data:audio/mp3;base64,${CHIME_BASE64_MP3}`;
     }
   }
   return `data:audio/mp3;base64,${CHIME_BASE64_MP3}`;
