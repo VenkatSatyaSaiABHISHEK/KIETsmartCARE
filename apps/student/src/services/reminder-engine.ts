@@ -159,10 +159,13 @@ export class ReminderEngine {
       }
 
       const diffMs = triggerDate.getTime() - now.getTime();
-      // Schedule if in the future, or trigger immediately (in 2 seconds) if due within the last 15 minutes and still untaken
+      // Only schedule if in the future, or trigger immediately if due right now within the last 60 seconds
       let effectiveTriggerDate = triggerDate;
-      if (diffMs <= 0 && Math.abs(diffMs) <= 15 * 60 * 1000) {
+      if (diffMs <= 0 && Math.abs(diffMs) <= 60 * 1000) {
         effectiveTriggerDate = new Date(Date.now() + 2000);
+      } else if (diffMs < -60 * 1000) {
+        // More than 60 seconds in the past -> already missed, do not schedule past alarms
+        continue;
       }
 
       if (effectiveTriggerDate.getTime() > now.getTime()) {

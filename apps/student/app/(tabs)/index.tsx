@@ -7,6 +7,7 @@ import {
   RefreshControl,
   SafeAreaView,
   TouchableOpacity,
+  AppState,
 } from 'react-native';
 import { Volume2 } from 'lucide-react-native';
 import { NextDoseCard } from '../../src/components/NextDoseCard';
@@ -57,6 +58,12 @@ export default function StudentHomeScreen() {
       setDoses(dList);
       dosesRef.current = dList;
       setRecoveryInquiry(rec);
+
+      // Auto-schedule local notifications with Android system triggers immediately
+      if (dList && dList.length > 0 && prof) {
+        ReminderEngine.syncAndScheduleAll(dList, prof.meal_times, prof).catch(() => {});
+      }
+
       return { prof, dList };
     } finally {
       setIsLoading(false);
@@ -83,9 +90,10 @@ export default function StudentHomeScreen() {
         }
       }
 
-      // If scheduled time has arrived (within the last 30 minutes)
+      // Only trigger full-screen takeover modal if scheduled time is due within -15s to +90s
+      // If past 90 seconds, do not pop up loud takeover chime on app launch (display in timeline instead)
       const diffMs = now - doseTimeMs;
-      const isDueNow = diffMs >= 0 && diffMs <= 30 * 60 * 1000;
+      const isDueNow = diffMs >= 0 && diffMs <= 90 * 1000;
 
       if (isDueNow && !alarmedDoseIdsRef.current.has(dose.id)) {
         alarmedDoseIdsRef.current.add(dose.id);
@@ -95,6 +103,17 @@ export default function StudentHomeScreen() {
       }
     }
   };
+
+  // Stop continuous audio loop if user leaves the app (presses Home / app switch)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        stopAlarm();
+        setActiveAlarmDose(null);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     loadStudentData().then((res) => {
@@ -110,9 +129,17 @@ export default function StudentHomeScreen() {
     const pollInterval = setInterval(async () => {
       try {
         const freshDoses = await StudentApi.getDoses();
+        const prevKey = dosesRef.current.map((d) => `${d.id}-${d.status}-${d.scheduled_at || d.time}`).join(';');
+        const freshKey = freshDoses.map((d) => `${d.id}-${d.status}-${d.scheduled_at || d.time}`).join(';');
+
         setDoses(freshDoses);
         dosesRef.current = freshDoses;
         checkDueAlarms(freshDoses);
+
+        if (prevKey !== freshKey) {
+          const curProf = await StudentApi.getProfile();
+          ReminderEngine.syncAndScheduleAll(freshDoses, curProf.meal_times, curProf).catch(() => {});
+        }
       } catch (err) {
         console.warn('Dose check error:', err);
       }

@@ -81,21 +81,10 @@ export default function ProfileScreen() {
   };
 
   const handleOptimizeBackground = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        await Linking.sendIntent(
-          'android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-          [{ key: 'data', value: 'package:edu.kiet.smartcare.student' }]
-        );
-      } catch (e) {
-        try {
-          await Linking.openSettings();
-        } catch {
-          Alert.alert('Notice', 'Background permissions are already active.');
-        }
-      }
-    } else {
-      Alert.alert('Device Status', 'iOS background alarms are fully managed automatically.');
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert('Settings', 'Please open Android Settings > Apps > KIET Smart Care to manage permissions.');
     }
   };
 
@@ -297,11 +286,22 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            <View style={{ height: 10 }} />
+            <View style={{ height: 14 }} />
 
-            <TouchableOpacity style={styles.modalActionBtn} onPress={handleOptimizeBackground}>
-              <BatteryCharging size={16} color="#059669" />
-              <Text style={styles.modalActionBtnText}>Keep Alarms Active In Background</Text>
+            <View style={{ backgroundColor: '#F1F5F9', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F1B33', marginBottom: 4 }}>
+                Required for Background Alarms:
+              </Text>
+              <Text style={{ fontSize: 11, color: '#475569', lineHeight: 16 }}>
+                &bull; <Text style={{ fontWeight: '600' }}>Battery</Text>: Choose &ldquo;Unrestricted&rdquo;{'\n'}
+                &bull; <Text style={{ fontWeight: '600' }}>Alarms &amp; reminders</Text>: Toggle &ldquo;Allowed&rdquo;{'\n'}
+                &bull; <Text style={{ fontWeight: '600' }}>Notifications</Text>: Ensure &ldquo;Allow notifications&rdquo; is ON
+              </Text>
+            </View>
+
+            <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: '#0F1B33' }]} onPress={handleOptimizeBackground}>
+              <BatteryCharging size={16} color="#FFFFFF" />
+              <Text style={[styles.modalActionBtnText, { color: '#FFFFFF' }]}>Open App Info &amp; Permissions ⚙️</Text>
             </TouchableOpacity>
           </View>
         </View>
