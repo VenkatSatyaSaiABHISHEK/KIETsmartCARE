@@ -30,6 +30,7 @@ import { StudentProfileData } from '../../src/types/student';
 import { ReminderEngine } from '../../src/services/reminder-engine';
 import { playAlarmChime } from '../../src/services/sound-player';
 import { formatTime12h } from '../../src/constants/shared';
+import Constants from 'expo-constants';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -80,12 +81,44 @@ export default function ProfileScreen() {
     setTimeout(() => setSoundStatus(null), 3500);
   };
 
-  const handleOptimizeBackground = async () => {
+  const getAppPackage = () => {
+    return Constants.appOwnership === 'expo'
+      ? 'host.exp.exponent'
+      : (Constants.expoConfig?.android?.package || 'edu.kiet.smartcare.student');
+  };
+
+  const handleOpenAppInfo = async () => {
     try {
       await Linking.openSettings();
     } catch {
-      Alert.alert('Settings', 'Please open Android Settings > Apps > KIET Smart Care to manage permissions.');
+      Alert.alert('Settings', 'Please open Android Settings > Apps to manage permissions.');
     }
+  };
+
+  const handleOpenExactAlarmSettings = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const pkg = getAppPackage();
+        await Linking.sendIntent('android.settings.REQUEST_SCHEDULE_EXACT_ALARM', [
+          { key: 'data', value: `package:${pkg}` },
+        ]);
+        return;
+      } catch {}
+    }
+    await handleOpenAppInfo();
+  };
+
+  const handleOpenOverlaySettings = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const pkg = getAppPackage();
+        await Linking.sendIntent('android.settings.action.MANAGE_OVERLAY_PERMISSION', [
+          { key: 'data', value: `package:${pkg}` },
+        ]);
+        return;
+      } catch {}
+    }
+    await handleOpenAppInfo();
   };
 
   const handleLogout = async () => {
@@ -295,13 +328,31 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 11, color: '#475569', lineHeight: 16 }}>
                 &bull; <Text style={{ fontWeight: '600' }}>Battery</Text>: Choose &ldquo;Unrestricted&rdquo;{'\n'}
                 &bull; <Text style={{ fontWeight: '600' }}>Alarms &amp; reminders</Text>: Toggle &ldquo;Allowed&rdquo;{'\n'}
+                &bull; <Text style={{ fontWeight: '600' }}>Appear on top</Text>: Toggle &ldquo;Allowed&rdquo;{'\n'}
                 &bull; <Text style={{ fontWeight: '600' }}>Notifications</Text>: Ensure &ldquo;Allow notifications&rdquo; is ON
+              </Text>
+              <Text style={{ fontSize: 10, color: '#64748B', marginTop: 6, fontStyle: 'italic' }}>
+                Note: In Expo Go, permissions are under &ldquo;Expo Go&rdquo;. In the installed APK, they are under &ldquo;KIET Smart Care&rdquo;.
               </Text>
             </View>
 
-            <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: '#0F1B33' }]} onPress={handleOptimizeBackground}>
+            <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: '#0F1B33' }]} onPress={handleOpenAppInfo}>
               <BatteryCharging size={16} color="#FFFFFF" />
-              <Text style={[styles.modalActionBtnText, { color: '#FFFFFF' }]}>Open App Info &amp; Permissions ⚙️</Text>
+              <Text style={[styles.modalActionBtnText, { color: '#FFFFFF' }]}>1. App Info &amp; Battery Settings ⚙️</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 8 }} />
+
+            <TouchableOpacity style={styles.modalActionBtn} onPress={handleOpenExactAlarmSettings}>
+              <Clock size={16} color="#0284C7" />
+              <Text style={styles.modalActionBtnText}>2. Toggle &ldquo;Alarms &amp; Reminders&rdquo; ⏰</Text>
+            </TouchableOpacity>
+
+            <View style={{ height: 8 }} />
+
+            <TouchableOpacity style={styles.modalActionBtn} onPress={handleOpenOverlaySettings}>
+              <Volume2 size={16} color="#059669" />
+              <Text style={styles.modalActionBtnText}>3. Toggle &ldquo;Appear on Top&rdquo; 📱</Text>
             </TouchableOpacity>
           </View>
         </View>
