@@ -45,11 +45,8 @@
           "icon": "./assets/icon.png",
           "color": "#0284C7",
           "sounds": [
-            "./assets/sounds/chime_reminder.mp3",
             "./assets/sounds/chime_reminder.wav",
-            "./assets/sounds/gentle_bell.mp3",
             "./assets/sounds/gentle_bell.wav",
-            "./assets/sounds/voice_dose_reminder.mp3",
             "./assets/sounds/voice_dose_reminder.wav"
           ]
         }
@@ -58,11 +55,8 @@
         "expo-asset",
         {
           "assets": [
-            "./assets/sounds/chime_reminder.mp3",
             "./assets/sounds/chime_reminder.wav",
-            "./assets/sounds/gentle_bell.mp3",
             "./assets/sounds/gentle_bell.wav",
-            "./assets/sounds/voice_dose_reminder.mp3",
             "./assets/sounds/voice_dose_reminder.wav"
           ]
         }
