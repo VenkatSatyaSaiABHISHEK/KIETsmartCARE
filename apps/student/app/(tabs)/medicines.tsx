@@ -12,18 +12,19 @@ import { useFocusEffect } from 'expo-router';
 import { Pill, Calendar, Clock, Stethoscope } from 'lucide-react-native';
 import { StudentApi } from '../../src/services/student-api';
 import { PrescriptionRecord } from '../../src/types/student';
+import { ListSkeletonLoader } from '../../src/components/SkeletonLoader';
 
 export default function MedicinesScreen() {
   const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadPrescriptions = async (showLoading = true) => {
+  const loadPrescriptions = async (showLoading = true, forceFresh = false) => {
     try {
       if (showLoading && prescriptions.length === 0) {
         setIsLoading(true);
       }
-      const data = await StudentApi.getPrescriptions();
+      const data = await StudentApi.getPrescriptions(forceFresh);
       setPrescriptions(data || []);
     } catch (e) {
       console.warn('Failed loading prescriptions:', e);
@@ -34,14 +35,14 @@ export default function MedicinesScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPrescriptions(false);
+      loadPrescriptions(false, true);
     }, [])
   );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await loadPrescriptions();
+      await loadPrescriptions(false, true);
     } finally {
       setIsRefreshing(false);
     }
@@ -64,11 +65,8 @@ export default function MedicinesScreen() {
           <Text style={styles.headerTitle}>My Prescriptions</Text>
         </View>
 
-        {isLoading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color="#0284C7" />
-            <Text style={styles.loadingText}>Loading prescribed medications...</Text>
-          </View>
+        {isLoading && prescriptions.length === 0 ? (
+          <ListSkeletonLoader count={3} />
         ) : prescriptions.length === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconCircle}>

@@ -88,6 +88,23 @@ export function HomeSkeletonLoader() {
   );
 }
 
+export function ListSkeletonLoader({ count = 3 }: { count?: number }) {
+  return (
+    <View style={styles.container}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i} style={[styles.groupCard, { marginBottom: 14 }]}>
+          <View style={styles.rowBetween}>
+            <SkeletonItem width={160} height={18} borderRadius={6} />
+            <SkeletonItem width={70} height={16} borderRadius={8} />
+          </View>
+          <SkeletonItem width="80%" height={14} borderRadius={4} style={{ marginTop: 10 }} />
+          <SkeletonItem width="50%" height={12} borderRadius={4} style={{ marginTop: 8 }} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,

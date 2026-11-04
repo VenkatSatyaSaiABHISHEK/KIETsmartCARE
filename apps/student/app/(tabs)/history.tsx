@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { StudentApi } from '../../src/services/student-api';
+import { ListSkeletonLoader } from '../../src/components/SkeletonLoader';
 
 interface VisitTimelineItem {
   id: string;
@@ -17,12 +18,12 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchVisits = async (showLoading = true) => {
+  const fetchVisits = async (showLoading = true, forceFresh = false) => {
     try {
       if (showLoading && history.length === 0) {
         setLoading(true);
       }
-      const items = await StudentApi.getHistory();
+      const items = await StudentApi.getHistory(forceFresh);
       setHistory(items);
     } catch (e) {
       console.warn('Error fetching history:', e);
@@ -34,13 +35,13 @@ export default function HistoryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchVisits(false);
+      fetchVisits(false, true);
     }, [])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchVisits();
+    fetchVisits(false, true);
   };
 
   return (
@@ -55,11 +56,8 @@ export default function HistoryScreen() {
           <Text style={styles.subtext}>Your complete campus clinic consultation timeline</Text>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="small" color="#0284C7" />
-            <Text style={styles.loadingText}>Loading clinical records...</Text>
-          </View>
+        {loading && history.length === 0 ? (
+          <ListSkeletonLoader count={3} />
         ) : history.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>No medical consultation history on record.</Text>

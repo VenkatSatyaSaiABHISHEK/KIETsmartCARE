@@ -194,7 +194,7 @@ export class AuthService {
   }
 
   /**
-   * Logout and clear secure storage
+   * Logout and clear secure storage & cached student data
    */
   static async logout(): Promise<void> {
     try {
@@ -202,6 +202,11 @@ export class AuthService {
     } catch {
       // ignore
     }
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const keys = ['profile', 'doses', 'prescriptions', 'history', 'recoveryInquiry'];
+      await AsyncStorage.multiRemove(keys.map((k: string) => `KIET_CACHE_${k}`));
+    } catch {}
     await clearSecureSession();
   }
 }

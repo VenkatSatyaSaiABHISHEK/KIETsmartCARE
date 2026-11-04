@@ -46,11 +46,11 @@ export default function StudentHomeScreen() {
     dosesRef.current = doses;
   }, [doses]);
 
-  const loadStudentData = async () => {
+  const loadStudentData = async (forceFresh = false) => {
     try {
       const [prof, dList, rec] = await Promise.all([
-        StudentApi.getProfile(),
-        StudentApi.getDoses(),
+        StudentApi.getProfile(forceFresh),
+        StudentApi.getDoses(forceFresh),
         StudentApi.getRecoveryInquiry(),
       ]);
       setProfile(prof);
@@ -127,10 +127,10 @@ export default function StudentHomeScreen() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const res = await loadStudentData();
+      const res = await loadStudentData(true);
       if (res?.dList) checkDueAlarms(res.dList);
-      if (profile) {
-        await ReminderEngine.syncAndScheduleAll(doses, profile.meal_times);
+      if (res?.prof) {
+        await ReminderEngine.syncAndScheduleAll(res.dList, res.prof.meal_times);
       }
     } finally {
       setIsRefreshing(false);

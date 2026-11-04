@@ -51,7 +51,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     async function load() {
-      const data = await StudentApi.getProfile();
+      const data = await StudentApi.getProfile(true);
       setProfile(data);
       if (data?.meal_times) {
         setBreakfast(data.meal_times.breakfast || '08:00');
@@ -64,7 +64,7 @@ export default function ProfileScreen() {
 
   const handleSaveMealTimes = async () => {
     await StudentApi.updateMealTimes({ breakfast, lunch, dinner });
-    const doses = await StudentApi.getDoses();
+    const doses = await StudentApi.getDoses(true);
     await ReminderEngine.syncAndScheduleAll(doses, { breakfast, lunch, dinner });
     setIsSaved(true);
     setTimeout(() => {

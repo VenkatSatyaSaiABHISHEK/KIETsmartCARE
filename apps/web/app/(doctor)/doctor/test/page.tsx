@@ -21,7 +21,7 @@ interface TestResult {
 }
 
 export default function DoctorTestAlarmPage() {
-  const [rollNumber, setRollNumber] = useState("2200290120019");
+  const [rollNumber, setRollNumber] = useState("");
   const [searchedStudent, setSearchedStudent] = useState<StudentInfo | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -326,7 +326,7 @@ export default function DoctorTestAlarmPage() {
                   localhost:8081
                 </a>{" "}
                 with Roll Number{" "}
-                <strong className="text-[#0F1B33]">{searchedStudent?.roll_number || "2200290120019"}</strong>.
+                <strong className="text-[#0F1B33]">{searchedStudent?.roll_number || "student account"}</strong>.
               </li>
               <li>
                 Click <strong>&ldquo;Set Alarm &amp; Schedule Dose&rdquo;</strong> above.

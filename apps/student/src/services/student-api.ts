@@ -64,19 +64,46 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 export class StudentApi {
   /**
+   * Purge all local memory and disk caches (called on logout or student change)
+   */
+  static async clearAllCache(): Promise<void> {
+    memoryCache.profile = null;
+    memoryCache.doses = null;
+    memoryCache.prescriptions = null;
+    memoryCache.history = null;
+    memoryCache.recoveryInquiry = null;
+    try {
+      const keys = ['profile', 'doses', 'prescriptions', 'history', 'recoveryInquiry'];
+      await AsyncStorage.multiRemove(keys.map((k) => `KIET_CACHE_${k}`));
+    } catch {}
+  }
+
+  /**
    * Fetch student's profile and personalized meal timings
    */
-  static async getProfile(): Promise<StudentProfileData> {
+  static async getProfile(forceFresh: boolean = false): Promise<StudentProfileData> {
     const session = await AuthService.getCurrentSession();
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
-    // 0. Instant Cache Return
-    const cached = await getCached<StudentProfileData>('profile');
-    if (cached) {
-      return cached;
+    // 0. Instant Cache Return (when not forcing refresh)
+    if (!forceFresh) {
+      const cached = await getCached<StudentProfileData>('profile');
+      if (cached) {
+        // Revalidate in background
+        StudentApi.fetchFreshProfile(studentId, rollNumber, session).catch(() => {});
+        return cached;
+      }
     }
 
+    return await StudentApi.fetchFreshProfile(studentId, rollNumber, session);
+  }
+
+  private static async fetchFreshProfile(
+    studentId?: string,
+    rollNumber?: string,
+    session?: any
+  ): Promise<StudentProfileData> {
     // 1. Try Backend API
     try {
       const q = studentId ? `studentId=${encodeURIComponent(studentId)}` : `rollNumber=${encodeURIComponent(rollNumber || '')}`;
@@ -104,7 +131,7 @@ export class StudentApi {
         }
       }
     } catch (apiErr) {
-      console.warn('API getProfile fallback to Supabase:', apiErr);
+      // Quietly continue to Supabase
     }
 
     // 2. Direct Supabase Fallback
@@ -154,7 +181,7 @@ export class StudentApi {
         }
       }
     } catch (e) {
-      console.warn('Supabase getProfile error:', e);
+      // Quietly continue to session
     }
 
     // Clean session profile fallback (100% real session identity)
@@ -221,17 +248,19 @@ export class StudentApi {
   /**
    * Fetch student's scheduled doses for today
    */
-  static async getDoses(): Promise<DoseScheduleRecord[]> {
+  static async getDoses(forceFresh: boolean = false): Promise<DoseScheduleRecord[]> {
     const session = await AuthService.getCurrentSession();
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
-    // 0. Instant Cache Return (Zero-lag tab switching)
-    const cachedDoses = await getCached<DoseScheduleRecord[]>('doses');
-    if (cachedDoses !== null && cachedDoses !== undefined) {
-      // Background revalidation
-      StudentApi.fetchFreshDoses(studentId, rollNumber).catch(() => {});
-      return cachedDoses;
+    if (!forceFresh) {
+      // 0. Instant Cache Return (Zero-lag tab switching)
+      const cachedDoses = await getCached<DoseScheduleRecord[]>('doses');
+      if (cachedDoses !== null && cachedDoses !== undefined) {
+        // Background revalidation
+        StudentApi.fetchFreshDoses(studentId, rollNumber).catch(() => {});
+        return cachedDoses;
+      }
     }
 
     return await StudentApi.fetchFreshDoses(studentId, rollNumber);
@@ -399,16 +428,18 @@ export class StudentApi {
   /**
    * Fetch active prescriptions and medicine details
    */
-  static async getPrescriptions(): Promise<PrescriptionRecord[]> {
+  static async getPrescriptions(forceFresh: boolean = false): Promise<PrescriptionRecord[]> {
     const session = await AuthService.getCurrentSession();
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
-    // 0. Instant Cache Return
-    const cached = await getCached<PrescriptionRecord[]>('prescriptions');
-    if (cached !== null && cached !== undefined) {
-      StudentApi.fetchFreshPrescriptions(studentId, rollNumber).catch(() => {});
-      return cached;
+    if (!forceFresh) {
+      // 0. Instant Cache Return
+      const cached = await getCached<PrescriptionRecord[]>('prescriptions');
+      if (cached !== null && cached !== undefined) {
+        StudentApi.fetchFreshPrescriptions(studentId, rollNumber).catch(() => {});
+        return cached;
+      }
     }
 
     return await StudentApi.fetchFreshPrescriptions(studentId, rollNumber);
@@ -487,16 +518,18 @@ export class StudentApi {
   /**
    * Fetch student clinical history
    */
-  static async getHistory(): Promise<any[]> {
+  static async getHistory(forceFresh: boolean = false): Promise<any[]> {
     const session = await AuthService.getCurrentSession();
     const studentId = session?.user_id;
     const rollNumber = session?.roll_number;
 
-    // 0. Instant Cache Return
-    const cached = await getCached<any[]>('history');
-    if (cached !== null && cached !== undefined) {
-      StudentApi.fetchFreshHistory(studentId, rollNumber).catch(() => {});
-      return cached;
+    if (!forceFresh) {
+      // 0. Instant Cache Return
+      const cached = await getCached<any[]>('history');
+      if (cached !== null && cached !== undefined) {
+        StudentApi.fetchFreshHistory(studentId, rollNumber).catch(() => {});
+        return cached;
+      }
     }
 
     return await StudentApi.fetchFreshHistory(studentId, rollNumber);
