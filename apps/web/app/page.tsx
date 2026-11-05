@@ -103,37 +103,38 @@ export default function PinLoginPage() {
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="w-full flex flex-col items-center"
             >
-              <div className="text-center mb-7">
-                <h1 className="text-[28px] font-semibold leading-tight text-[var(--text)] tracking-tight">
-                  Who are{" "}
-                  <span className="relative inline-block px-1.5 py-0.5">
-                    <span className="relative z-10">you?</span>
+              <div className="text-center mb-8">
+                <h1 className="text-[34px] sm:text-[38px] font-semibold leading-none text-black tracking-tight flex items-baseline justify-center gap-2">
+                  <span>Who are</span>
+                  <span className="relative inline-block px-3 py-1">
+                    <span className="relative z-10 font-[family-name:var(--font-serif)] italic font-medium text-[36px] sm:text-[40px] text-black tracking-normal">
+                      you?
+                    </span>
                     <svg
-                      viewBox="0 0 120 48"
+                      viewBox="0 0 160 70"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
-                      className="absolute -inset-x-2.5 -inset-y-2 w-[calc(100%+20px)] h-[calc(100%+16px)] pointer-events-none overflow-visible"
+                      className="absolute -inset-x-3 -inset-y-2.5 w-[calc(100%+24px)] h-[calc(100%+20px)] pointer-events-none overflow-visible"
                     >
                       {/* Organic hand-drawn sketch loop circling "you?" */}
                       <motion.path
-                        d="M 12,25 C 8,14 26,5 60,6 C 96,7 114,14 110,26 C 106,37 72,43 32,41 C 12,39 4,30 20,18 C 28,11 48,8 68,10"
-                        stroke="currentColor"
+                        d="M 28,38 C 16,16 48,6 90,8 C 136,9 162,18 156,38 C 149,58 102,66 50,64 C 20,62 8,50 26,32 C 38,20 66,16 96,18"
+                        stroke="#000000"
                         strokeWidth="2.4"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-slate-800"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: 0.95 }}
                         transition={{
                           duration: 1.1,
                           ease: [0.16, 1, 0.3, 1],
-                          delay: 0.2,
+                          delay: 0.15,
                         }}
                       />
                     </svg>
                   </span>
                 </h1>
-                <p className="mt-2 text-[14px] text-[var(--text-muted)]">
+                <p className="mt-3 text-[14px] text-black/50 font-normal">
                   Select your role to continue.
                 </p>
               </div>
