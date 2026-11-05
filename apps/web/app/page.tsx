@@ -67,31 +67,32 @@ export default function PinLoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-[var(--bg)] px-6 py-12">
+    <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-[var(--bg)] px-6 py-12 overflow-x-hidden">
+      {/* Cat peeking upside down (180deg) from the top border of the screen */}
+      <div
+        className="fixed top-0 left-1/2 -translate-x-1/2 z-40 cursor-pointer select-none group"
+        onClick={() => setIsCatPeeking((prev) => !prev)}
+        title="Campus Cat peeking upside-down from top"
+      >
+        <div
+          className="w-[190px] h-[130px] overflow-hidden flex items-center justify-center transition-all duration-500 ease-out group-hover:translate-y-3"
+          style={{
+            transform: `rotate(180deg) ${isCatPeeking ? 'translateY(-14px)' : 'translateY(0px)'}`,
+            marginTop: '-22px', // Hugs the top edge so it feels like it is emerging from the screen border
+            filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.06))',
+          }}
+        >
+          <iframe
+            src="https://lottie.host/embed/9e506062-5f1a-4fe1-a03a-df1822b1b1b9/taZABzSbck.lottie"
+            className="w-full h-full border-0 pointer-events-none"
+            style={{ background: 'transparent' }}
+            title="Campus Cat Animation"
+          />
+        </div>
+      </div>
+
       {/* Centered Single Column (max-w 400px) */}
       <div className="w-full max-w-[400px] flex flex-col items-center">
-        {/* Top Middle Cat Lottie Animation (Mirrored / Reversed & Curved perspective) */}
-        <div
-          className="relative flex flex-col items-center justify-center -mt-6 mb-1 cursor-pointer select-none group"
-          onClick={() => setIsCatPeeking((prev) => !prev)}
-          title="Click to interact with campus cat"
-        >
-          <div
-            className="w-[180px] h-[120px] overflow-hidden flex items-center justify-center transition-all duration-300 group-hover:scale-105"
-            style={{
-              transform: `scaleX(-1) ${isCatPeeking ? 'rotate(-6deg) translateY(6px)' : 'rotate(-2deg)'}`,
-              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.04))',
-            }}
-          >
-            <iframe
-              src="https://lottie.host/embed/9e506062-5f1a-4fe1-a03a-df1822b1b1b9/taZABzSbck.lottie"
-              className="w-full h-full border-0 pointer-events-none"
-              style={{ background: 'transparent' }}
-              title="Campus Cat Animation"
-            />
-          </div>
-        </div>
-
         {/* Wordmark top of column */}
         <div className="text-center font-semibold text-[14px] text-[var(--text)] mb-6 select-none">
           KIET Smart Care
