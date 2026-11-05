@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, LayoutDashboard, Bell, Users, BarChart3, ChevronRight, Search } from "lucide-react";
 
 export function OfficerMasthead() {
   const pathname = usePathname();
@@ -10,6 +11,7 @@ export function OfficerMasthead() {
   const [officerName, setOfficerName] = useState<string>("Health Officer");
   const [openAlertCount, setOpenAlertCount] = useState<number>(0);
   const [searchVal, setSearchVal] = useState("");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // 1. Fetch authenticated officer profile
@@ -35,9 +37,13 @@ export function OfficerMasthead() {
     };
 
     fetchAlertCount();
-    const interval = setInterval(fetchAlertCount, 15000); // 15s poll
+    const interval = setInterval(fetchAlertCount, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const handleSignOut = () => {
     if (typeof window !== "undefined") {
@@ -51,30 +57,41 @@ export function OfficerMasthead() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && searchVal.trim()) {
+      setIsMobileMenuOpen(false);
       router.push(`/officer/students?search=${encodeURIComponent(searchVal.trim())}`);
     }
   };
 
   const navLinks = [
-    { href: "/officer", label: "Overview", count: 0 },
-    { href: "/officer/alerts", label: "Alerts", count: openAlertCount },
-    { href: "/officer/students", label: "Students", count: 0 },
-    { href: "/officer/reports", label: "Reports", count: 0 },
+    { href: "/officer", label: "Overview", icon: LayoutDashboard, count: 0 },
+    { href: "/officer/alerts", label: "Alerts", icon: Bell, count: openAlertCount },
+    { href: "/officer/students", label: "Students", icon: Users, count: 0 },
+    { href: "/officer/reports", label: "Reports", icon: BarChart3, count: 0 },
   ];
 
   return (
     <>
-      {/* Top Masthead */}
-      <header className="w-full bg-white select-none shrink-0 border-b border-[#E5E7EB]">
-        {/* Double hairline effect: 1px border on header + 1px border on inner container */}
-        <div className="w-full max-w-[1600px] mx-auto px-5 sm:px-10 lg:px-[72px] h-[60px] flex items-center justify-between gap-4 border-b border-[#E5E7EB]">
-          {/* Left: Serif Wordmark & Navigation Links */}
-          <div className="flex items-center gap-8">
+      {/* Sticky Top Masthead */}
+      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md select-none shrink-0 border-b border-[#E5E7EB] shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-10 lg:px-[72px] h-[60px] flex items-center justify-between gap-4">
+          {/* Left: Brand Icon & Navigation Links */}
+          <div className="flex items-center gap-6 lg:gap-8">
             <Link
               href="/officer"
-              className="font-serif text-[20px] font-semibold text-[#0F1B33] tracking-tight hover:opacity-90 shrink-0"
+              className="flex items-center gap-2.5 hover:opacity-90 shrink-0"
+              title="KIET Smart Care - Health Officer Portal"
             >
-              KIET Smart Care
+              <img
+                src="/logo.png"
+                alt="KIET Care Logo"
+                className="h-8 w-8 rounded-lg object-contain shadow-sm border border-black/5"
+              />
+              <span className="hidden md:inline font-serif text-[17px] font-semibold text-[#0F1B33] tracking-tight">
+                KIET Smart Care
+              </span>
+              <span className="inline-flex md:hidden text-[11px] font-semibold tracking-wider uppercase text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full">
+                Officer
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -97,7 +114,7 @@ export function OfficerMasthead() {
                   >
                     <span>{link.label}</span>
                     {link.count > 0 && (
-                      <span className="ml-1 text-[11px] font-semibold text-[#B91C1C] tabular-nums">
+                      <span className="ml-1 px-1.5 py-0.2 rounded-full bg-red-100 text-[11px] font-bold text-[#B91C1C] tabular-nums">
                         {link.count}
                       </span>
                     )}
@@ -108,7 +125,7 @@ export function OfficerMasthead() {
           </div>
 
           {/* Right: Search, Officer Name & Outlined Sign out */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div className="relative hidden md:block w-64">
               <input
                 type="text"
@@ -127,15 +144,93 @@ export function OfficerMasthead() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="h-7 px-3 text-[12px] font-sans font-medium text-[#0F1B33] bg-white border border-[#E5E7EB] rounded-[6px] hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
+              className="hidden sm:inline-flex h-7 px-3 items-center text-[12px] font-sans font-medium text-[#0F1B33] bg-white border border-[#E5E7EB] rounded-[6px] hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
             >
               Sign out
             </button>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle navigation menu"
+              className="sm:hidden flex h-9 w-9 items-center justify-center rounded-lg border border-black/10 bg-neutral-50 text-neutral-800 hover:bg-neutral-100 transition-colors"
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Drawer */}
+        {isMobileMenuOpen && (
+          <div className="sm:hidden w-full border-t border-[#E5E7EB] bg-white px-4 py-3 shadow-lg flex flex-col gap-2 animate-in slide-in-from-top-2 duration-200">
+            {/* Mobile Quick Search */}
+            <div className="relative w-full mb-1">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search roll number or student name..."
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="w-full h-8 pl-8 pr-3 text-[12px] bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-black"
+              />
+            </div>
+
+            {/* Officer Profile & Sign out */}
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+              <div className="text-[12px] font-semibold text-neutral-900">
+                {officerName}
+                <span className="block text-[10px] font-normal text-neutral-500">Surveillance Officer</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-[11px] font-medium text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-md transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+
+            {/* Navigation items */}
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive =
+                link.href === "/officer"
+                  ? pathname === "/officer"
+                  : pathname.startsWith(link.href);
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-[13px] transition-colors ${
+                    isActive
+                      ? "bg-neutral-100 font-semibold text-neutral-900"
+                      : "text-neutral-700 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`h-4 w-4 ${isActive ? "text-neutral-900" : "text-neutral-400"}`} />
+                    <span>{link.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {link.count > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-[10px] font-bold text-red-700 tabular-nums">
+                        {link.count}
+                      </span>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-neutral-300" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </header>
 
-      {/* Mobile Bottom Tab Bar (390px friendly, 48px tap targets) */}
+      {/* Mobile Bottom Tab Bar */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] flex items-center justify-around h-[52px] select-none shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         {navLinks.map((link) => {
           const isActive =
