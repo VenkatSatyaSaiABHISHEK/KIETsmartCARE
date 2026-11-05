@@ -103,43 +103,41 @@ export default function PinLoginPage() {
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="w-full flex flex-col items-center"
             >
-              <div className="text-center mb-9">
-                <h1 className="text-[36px] sm:text-[42px] font-bold leading-none text-black tracking-tight flex items-center justify-center gap-2.5">
-                  <span className="font-[family-name:var(--font-geist)]">Who are</span>
-                  <span className="relative inline-block px-3.5 py-1">
-                    <span className="relative z-10 font-[family-name:var(--font-cursive)] font-bold text-[46px] sm:text-[54px] text-black tracking-wide -rotate-1 inline-block select-none">
-                      you?
-                    </span>
+              <div className="text-center mb-8">
+                <h1 className="text-[38px] sm:text-[44px] font-normal leading-tight text-[#1F1E1D] font-[family-name:var(--font-serif)] tracking-[-0.02em]">
+                  Who are{" "}
+                  <span className="relative inline-block">
+                    <span className="relative z-10 italic">you?</span>
                     <svg
-                      viewBox="0 0 170 76"
+                      viewBox="0 0 90 20"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
-                      className="absolute -inset-x-3.5 -inset-y-3 w-[calc(100%+28px)] h-[calc(100%+24px)] pointer-events-none overflow-visible"
+                      className="absolute -bottom-1.5 left-0 w-full h-[14px] pointer-events-none overflow-visible"
                     >
-                      {/* Perpetual non-stop animated sketch loop */}
+                      {/* Elegant subtle line under "you?" */}
                       <motion.path
-                        d="M 30,42 C 16,18 52,6 96,8 C 144,9 170,20 164,42 C 156,64 108,72 52,70 C 20,68 8,54 28,34 C 42,20 72,16 104,18"
-                        stroke="#000000"
-                        strokeWidth="2.6"
+                        d="M 2,10 C 25,12 55,12 72,8"
+                        stroke="#1F1E1D"
+                        strokeWidth="1.8"
                         strokeLinecap="round"
-                        strokeLinejoin="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                      />
+                      {/* Refined delicate little cross at the end */}
+                      <motion.path
+                        d="M 76,4 L 84,12 M 84,4 L 76,12"
+                        stroke="#1F1E1D"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{
-                          pathLength: [0, 1, 1, 0],
-                          opacity: [0, 1, 1, 0],
-                        }}
-                        transition={{
-                          duration: 3.2,
-                          times: [0, 0.45, 0.85, 1],
-                          ease: "easeInOut",
-                          repeat: Infinity,
-                          repeatDelay: 0.3,
-                        }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{ duration: 0.35, delay: 0.75, ease: "easeOut" }}
                       />
                     </svg>
                   </span>
                 </h1>
-                <p className="mt-3.5 text-[14px] text-black/50 font-normal">
+                <p className="mt-2 text-[15px] text-[#666664] font-normal">
                   Select your role to continue.
                 </p>
               </div>
