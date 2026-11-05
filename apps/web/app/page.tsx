@@ -91,13 +91,8 @@ export default function PinLoginPage() {
         </div>
       </div>
 
-      {/* Centered Single Column (max-w 400px) */}
-      <div className="w-full max-w-[400px] flex flex-col items-center">
-        {/* Wordmark top of column */}
-        <div className="text-center font-semibold text-[14px] text-[var(--text)] mb-6 select-none">
-          KIET Smart Care
-        </div>
-
+      {/* Centered Single Column (max-w 460px) */}
+      <div className="w-full max-w-[460px] flex flex-col items-center">
         <AnimatePresence mode="wait">
           {!selectedRole ? (
             <motion.div
@@ -108,11 +103,37 @@ export default function PinLoginPage() {
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="w-full flex flex-col items-center"
             >
-              <div className="text-center mb-6">
-                <h1 className="text-[24px] font-semibold leading-tight text-[var(--text)]">
-                  Who are you?
+              <div className="text-center mb-7">
+                <h1 className="text-[28px] font-semibold leading-tight text-[var(--text)] tracking-tight">
+                  Who are{" "}
+                  <span className="relative inline-block px-1.5 py-0.5">
+                    <span className="relative z-10">you?</span>
+                    <svg
+                      viewBox="0 0 120 48"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="absolute -inset-x-2.5 -inset-y-2 w-[calc(100%+20px)] h-[calc(100%+16px)] pointer-events-none overflow-visible"
+                    >
+                      {/* Organic hand-drawn sketch loop circling "you?" */}
+                      <motion.path
+                        d="M 12,25 C 8,14 26,5 60,6 C 96,7 114,14 110,26 C 106,37 72,43 32,41 C 12,39 4,30 20,18 C 28,11 48,8 68,10"
+                        stroke="currentColor"
+                        strokeWidth="2.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-slate-800"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 0.95 }}
+                        transition={{
+                          duration: 1.1,
+                          ease: [0.16, 1, 0.3, 1],
+                          delay: 0.2,
+                        }}
+                      />
+                    </svg>
+                  </span>
                 </h1>
-                <p className="mt-1 text-[14px] text-[var(--text-muted)]">
+                <p className="mt-2 text-[14px] text-[var(--text-muted)]">
                   Select your role to continue.
                 </p>
               </div>
@@ -147,7 +168,7 @@ export default function PinLoginPage() {
       {/* Fixed bottom-center footer */}
       <footer className="fixed bottom-6 left-0 right-0 text-center select-none pointer-events-none">
         <p className="text-[12px] text-[var(--text-muted)]">
-          KIET Group of Institutions, Ghaziabad
+          KIET Group of Institutions
         </p>
       </footer>
     </div>
