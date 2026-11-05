@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
   AppState,
+  Platform,
 } from 'react-native';
 import { Volume2 } from 'lucide-react-native';
 import { NextDoseCard } from '../../src/components/NextDoseCard';
@@ -156,6 +157,34 @@ export default function StudentHomeScreen() {
       }
     });
 
+    // Handle Notifee Full-Screen lockscreen alarm wakeup
+    let unsubscribeNotifee: (() => void) | null = null;
+    if (Platform.OS === 'android') {
+      try {
+        const notifee = require('@notifee/react-native').default;
+        if (notifee) {
+          notifee.getInitialNotification().then((initial: any) => {
+            if (initial?.notification?.data?.doseId) {
+              const doseId = initial.notification.data.doseId;
+              const target = dosesRef.current.find((d) => d.id === doseId) || dosesRef.current[0];
+              if (target) {
+                setActiveAlarmDose(target);
+                startContinuousAlarm();
+              }
+            }
+          });
+          unsubscribeNotifee = notifee.onForegroundEvent(({ detail }: any) => {
+            const doseId = detail.notification?.data?.doseId;
+            const target = dosesRef.current.find((d) => d.id === doseId);
+            if (target && (target.status === 'scheduled' || target.status === 'unconfirmed')) {
+              setActiveAlarmDose(target);
+              startContinuousAlarm();
+            }
+          });
+        }
+      } catch {}
+    }
+
     // 1. High-precision 1-second clock: checks current second against target alarm time with ZERO lag
     const clockInterval = setInterval(() => {
       checkDueAlarms(dosesRef.current);
@@ -184,6 +213,7 @@ export default function StudentHomeScreen() {
     return () => {
       responseSub.remove();
       receivedSub.remove();
+      if (unsubscribeNotifee) unsubscribeNotifee();
       clearInterval(clockInterval);
       clearInterval(pollInterval);
     };

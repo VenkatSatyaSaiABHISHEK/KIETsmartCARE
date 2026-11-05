@@ -22,6 +22,7 @@ if (Platform.OS !== 'web') {
 
 // Android channel configuration - bumped to v9 to force Android OS to create fresh ALARM-stream channel
 export const ANDROID_CHANNEL_ID = 'kiet_medicine_alarm_v9';
+export const NOTIFEE_FULLSCREEN_CHANNEL_ID = 'kiet_alarm_full_screen';
 export const DOSE_NOTIFICATION_CATEGORY = 'DOSE_REMINDER_ACTIONS';
 
 export class ReminderEngine {
@@ -76,6 +77,23 @@ export class ReminderEngine {
           enableVibrate: true,
           showBadge: true,
         });
+
+        // Initialize Notifee Full-Screen Alarm Channel
+        try {
+          const notifee = require('@notifee/react-native').default;
+          const { AndroidImportance } = require('@notifee/react-native');
+          if (notifee) {
+            await notifee.createChannel({
+              id: NOTIFEE_FULLSCREEN_CHANNEL_ID,
+              name: 'KIET Medicine Alarms (Full Screen Wakeup)',
+              importance: AndroidImportance.HIGH,
+              sound: 'chime_reminder',
+              vibration: true,
+              vibrationPattern: [0, 600, 300, 600, 300, 1000],
+              bypassDnd: true,
+            });
+          }
+        } catch {}
       }
 
       // Configure interactive notification action buttons: Taken, Taken Late, Not Taken
@@ -127,9 +145,7 @@ export class ReminderEngine {
   }
 
   /**
-   * Sync schedule and rebuild ALL local scheduled notifications with unique identifiers (zero duplicates).
-   * Title: "{firstName}, time for your medicine."
-   * Body: "{mealRelation} {mealSlot}: Tablet 1 (2 tablets)"
+   * Sync schedule and rebuild ALL local scheduled notifications with full-screen wakeup triggers.
    */
   static async syncAndScheduleAll(
     doses: DoseScheduleRecord[],
@@ -145,6 +161,13 @@ export class ReminderEngine {
 
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
+      // Also cancel Notifee scheduled triggers
+      try {
+        const notifee = require('@notifee/react-native').default;
+        if (notifee) {
+          await notifee.cancelAllNotifications();
+        }
+      } catch {}
       console.log('[REMINDER ENGINE] Previous local notifications cancelled. Rebuilding clean schedule...');
     } catch (err) {
       console.warn('Error cancelling scheduled notifications:', err);
@@ -174,12 +197,10 @@ export class ReminderEngine {
       }
 
       const diffMs = triggerDate.getTime() - now.getTime();
-      // Only schedule if in the future, or trigger immediately if due right now within the last 60 seconds
       let effectiveTriggerDate = triggerDate;
       if (diffMs <= 0 && Math.abs(diffMs) <= 60 * 1000) {
         effectiveTriggerDate = new Date(Date.now() + 2000);
       } else if (diffMs < -60 * 1000) {
-        // More than 60 seconds in the past -> already missed, do not schedule past alarms
         continue;
       }
 
@@ -209,6 +230,55 @@ export class ReminderEngine {
       const allDoseIds = group.doses.map((d) => d.id);
       const uniqueNotifId = `kiet_dose_${group.triggerDate.getTime()}`;
 
+      // 1. Android Native Full-Screen Intent via Notifee (wakes screen & displays full UI over lock screen)
+      if (Platform.OS === 'android') {
+        try {
+          const notifee = require('@notifee/react-native').default;
+          const { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType } = require('@notifee/react-native');
+          if (notifee) {
+            await notifee.createTriggerNotification(
+              {
+                id: uniqueNotifId,
+                title: notificationTitle,
+                body: notificationBody,
+                data: {
+                  doseId: primaryDoseId,
+                  doseIds: allDoseIds.join(','),
+                  type: 'PRIMARY_REMINDER',
+                },
+                android: {
+                  channelId: NOTIFEE_FULLSCREEN_CHANNEL_ID,
+                  importance: AndroidImportance.HIGH,
+                  category: AndroidCategory.ALARM,
+                  sound: 'chime_reminder',
+                  fullScreenAction: {
+                    id: 'default',
+                    launchActivity: 'default',
+                  },
+                  pressAction: {
+                    id: 'default',
+                    launchActivity: 'default',
+                  },
+                  visibility: AndroidVisibility.PUBLIC,
+                  autoCancel: false,
+                  ongoing: true,
+                },
+              },
+              {
+                type: TriggerType.TIMESTAMP,
+                timestamp: group.triggerDate.getTime(),
+                alarmManager: {
+                  allowWhileIdle: true,
+                },
+              }
+            );
+          }
+        } catch (notifErr) {
+          console.warn('[REMINDER ENGINE] Full-screen intent scheduling note:', notifErr);
+        }
+      }
+
+      // 2. Expo Notifications Trigger (acts as backup & handles notification drawer)
       try {
         await Notifications.scheduleNotificationAsync({
           identifier: uniqueNotifId,

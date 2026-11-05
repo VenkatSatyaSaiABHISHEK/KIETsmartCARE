@@ -31,6 +31,7 @@
         "VIBRATE",
         "SCHEDULE_EXACT_ALARM",
         "USE_EXACT_ALARM",
+        "USE_FULL_SCREEN_INTENT",
         "WAKE_LOCK",
         "POST_NOTIFICATIONS",
         "MODIFY_AUDIO_SETTINGS",
@@ -40,6 +41,8 @@
       ]
     },
     "plugins": [
+      "./plugins/withAndroidAlarms.js",
+      "@notifee/react-native",
       "expo-router",
       [
         "expo-notifications",

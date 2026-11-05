@@ -13,6 +13,7 @@
     "@expo-google-fonts/source-serif-4": "^0.4.2",
     "@expo/metro-runtime": "~4.0.1",
     "@kiet-smart-care/shared": "file:../../packages/shared",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.49.1",
     "expo": "~52.0.37",
