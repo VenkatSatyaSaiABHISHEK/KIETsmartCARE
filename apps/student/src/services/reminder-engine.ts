@@ -388,8 +388,58 @@ export class ReminderEngine {
 
     try {
       const triggerDate = new Date(Date.now() + secondsDelay * 1000);
+      const testId = `kiet_test_${triggerDate.getTime()}`;
+
+      // 1. Full-Screen Intent trigger via Notifee
+      if (Platform.OS === 'android') {
+        try {
+          const notifee = require('@notifee/react-native').default;
+          const { AndroidImportance, AndroidCategory, AndroidVisibility, TriggerType } = require('@notifee/react-native');
+          if (notifee) {
+            await notifee.createTriggerNotification(
+              {
+                id: testId,
+                title: `${firstName}, time for your medicine`,
+                body: 'After food: Tablet 1 (1 tablet)',
+                data: {
+                  doseId: 'test_dose_now',
+                  type: 'TEST_ALARM',
+                },
+                android: {
+                  channelId: NOTIFEE_FULLSCREEN_CHANNEL_ID,
+                  importance: AndroidImportance.HIGH,
+                  category: AndroidCategory.ALARM,
+                  sound: 'chime_reminder',
+                  fullScreenAction: {
+                    id: 'default',
+                    launchActivity: 'default',
+                  },
+                  pressAction: {
+                    id: 'default',
+                    launchActivity: 'default',
+                  },
+                  visibility: AndroidVisibility.PUBLIC,
+                  autoCancel: false,
+                  ongoing: true,
+                },
+              },
+              {
+                type: TriggerType.TIMESTAMP,
+                timestamp: triggerDate.getTime(),
+                alarmManager: {
+                  allowWhileIdle: true,
+                },
+              }
+            );
+          }
+        } catch (notifErr) {
+          console.warn('Test alarm Notifee error:', notifErr);
+        }
+      }
+
+      // 2. Standard Expo Notification Trigger
       await Notifications.scheduleNotificationAsync({
-        identifier: `kiet_test_${triggerDate.getTime()}`,
+        identifier: testId,
         content: {
           title: `${firstName}, time for your medicine`,
           body: 'After food: Tablet 1 (1 tablet)',

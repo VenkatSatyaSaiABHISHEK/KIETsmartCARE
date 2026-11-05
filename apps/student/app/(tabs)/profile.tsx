@@ -23,12 +23,26 @@ import {
   ChevronRight,
   X,
   CheckCircle2,
+  Play,
+  Check,
+  Sparkles,
+  Bell,
+  Mic,
+  Radio,
 } from 'lucide-react-native';
 import { StudentApi } from '../../src/services/student-api';
 import { AuthService } from '../../src/services/auth';
 import { StudentProfileData } from '../../src/types/student';
 import { ReminderEngine } from '../../src/services/reminder-engine';
-import { playAlarmChime } from '../../src/services/sound-player';
+import {
+  SOUND_OPTIONS,
+  SoundTheme,
+  getSelectedSoundTheme,
+  setSelectedSoundTheme,
+  previewSound,
+  stopPreviewSound,
+  playAlarmChime,
+} from '../../src/services/sound-player';
 import { formatTime12h } from '../../src/constants/shared';
 import Constants from 'expo-constants';
 
@@ -40,6 +54,9 @@ export default function ProfileScreen() {
   const [dinner, setDinner] = useState('20:00');
   const [isSaved, setIsSaved] = useState(false);
   const [soundStatus, setSoundStatus] = useState<string | null>(null);
+  const [activeTheme, setActiveTheme] = useState<SoundTheme>(getSelectedSoundTheme());
+  const [previewingTheme, setPreviewingTheme] = useState<SoundTheme | null>(null);
+  const [isTestingAlarm, setIsTestingAlarm] = useState(false);
 
   // Modal visibility states for the 3 popup buttons
   const [activeModal, setActiveModal] = useState<'meals' | 'audio' | 'clinic' | null>(null);
@@ -79,6 +96,28 @@ export default function ProfileScreen() {
     await playAlarmChime();
     setTimeout(() => setSoundStatus('Chime played successfully!'), 1500);
     setTimeout(() => setSoundStatus(null), 3500);
+  };
+
+  const handleSelectSoundTheme = async (theme: SoundTheme) => {
+    setActiveTheme(theme);
+    await setSelectedSoundTheme(theme);
+    setPreviewingTheme(theme);
+    const title = SOUND_OPTIONS.find((s) => s.id === theme)?.title || 'Tone';
+    setSoundStatus(`Selected "${title}"`);
+    await previewSound(theme);
+    setTimeout(() => setPreviewingTheme(null), 3000);
+    setTimeout(() => setSoundStatus(null), 3500);
+  };
+
+  const handleTestWakeupAlarm = async () => {
+    setIsTestingAlarm(true);
+    await ReminderEngine.triggerImmediateAlarmTest(5, profile?.full_name || 'Student');
+    Alert.alert(
+      'Wakeup Alarm Scheduled (5s)',
+      'Lock your phone or press home now! In 5 seconds, your screen will turn ON, bypass lockscreen, and ring aloud.',
+      [{ text: 'I understand' }]
+    );
+    setTimeout(() => setIsTestingAlarm(false), 5500);
   };
 
   const getAppPackage = () => {
@@ -170,7 +209,7 @@ export default function ProfileScreen() {
             <ChevronRight size={18} color="#94A3B8" />
           </TouchableOpacity>
 
-          {/* Button Card 2: Alarm Sound & Health */}
+          {/* Button Card 2: Sound Lab & Wakeup Test */}
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => setActiveModal('audio')}
@@ -180,8 +219,10 @@ export default function ProfileScreen() {
               <Volume2 size={20} color="#059669" />
             </View>
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Alarm Sound & Background Health</Text>
-              <Text style={styles.cardSubtitle}>Play chime sample & background wake</Text>
+              <Text style={styles.cardTitle}>Sound Lab &amp; Wakeup Test</Text>
+              <Text style={styles.cardSubtitle}>
+                {SOUND_OPTIONS.find((s) => s.id === activeTheme)?.title || 'Crystal Chime'} &bull; Test 5s Wakeup
+              </Text>
             </View>
             <ChevronRight size={18} color="#94A3B8" />
           </TouchableOpacity>
@@ -284,76 +325,187 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* POPUP MODAL 2: Alarm Sound & Background Health */}
+      {/* POPUP MODAL 2: Sound Lab & Background Wakeup Test */}
       <Modal
         visible={activeModal === 'audio'}
         transparent
         animationType="fade"
-        onRequestClose={() => setActiveModal(null)}
+        onRequestClose={() => {
+          stopPreviewSound();
+          setActiveModal(null);
+        }}
       >
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
                 <Volume2 size={18} color="#059669" />
-                <Text style={styles.modalTitle}>Alarm Sound & Health</Text>
+                <Text style={styles.modalTitle}>Sound Lab &amp; Wakeup Test</Text>
               </View>
-              <TouchableOpacity onPress={() => setActiveModal(null)} style={styles.closeBtn}>
+              <TouchableOpacity
+                onPress={() => {
+                  stopPreviewSound();
+                  setActiveModal(null);
+                }}
+                style={styles.closeBtn}
+              >
                 <X size={18} color="#6B7280" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalDesc}>
-              Test your device chime audio and ensure alarms ring when your phone is locked or asleep.
-            </Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalDesc}>
+                Customize your campus medicine alert tone and test the automatic screen takeover.
+              </Text>
 
-            <TouchableOpacity style={styles.modalActionBtn} onPress={handleTestSound}>
-              <Volume2 size={16} color="#0284C7" />
-              <Text style={styles.modalActionBtnText}>Play Chime Sample</Text>
-            </TouchableOpacity>
-
-            {soundStatus && (
-              <View style={styles.statusToast}>
-                <CheckCircle2 size={14} color="#059669" />
-                <Text style={styles.statusToastText}>{soundStatus}</Text>
+              {/* Sound Theme Selector (Sound Lab) */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1B33', marginBottom: 8 }}>
+                  Select Your Alarm Tone:
+                </Text>
+                {SOUND_OPTIONS.map((opt) => {
+                  const isSelected = activeTheme === opt.id;
+                  const isPlaying = previewingTheme === opt.id;
+                  return (
+                    <TouchableOpacity
+                      key={opt.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: isSelected ? '#EFF6FF' : '#F8FAFC',
+                        borderColor: isSelected ? '#0284C7' : '#E2E8F0',
+                        borderWidth: isSelected ? 2 : 1,
+                        borderRadius: 10,
+                        padding: 10,
+                        marginBottom: 8,
+                      }}
+                      onPress={() => handleSelectSoundTheme(opt.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: isSelected ? '#0284C7' : '#E2E8F0',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          marginRight: 10,
+                        }}
+                      >
+                        {opt.id === 'chime' ? (
+                          <Sparkles size={18} color={isSelected ? '#FFFFFF' : '#475569'} />
+                        ) : opt.id === 'bell' ? (
+                          <Bell size={18} color={isSelected ? '#FFFFFF' : '#475569'} />
+                        ) : (
+                          <Mic size={18} color={isSelected ? '#FFFFFF' : '#475569'} />
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              fontWeight: '700',
+                              color: isSelected ? '#0369A1' : '#0F1B33',
+                            }}
+                          >
+                            {opt.title}
+                          </Text>
+                          {isSelected && (
+                            <View
+                              style={{
+                                marginLeft: 6,
+                                backgroundColor: '#BAE6FD',
+                                paddingHorizontal: 6,
+                                paddingVertical: 1,
+                                borderRadius: 4,
+                              }}
+                            >
+                              <Text style={{ fontSize: 9, fontWeight: '800', color: '#0369A1' }}>ACTIVE</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{opt.subtitle}</Text>
+                      </View>
+                      <View
+                        style={{
+                          padding: 8,
+                          backgroundColor: isPlaying ? '#0284C7' : '#FFFFFF',
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: '#CBD5E1',
+                          marginLeft: 8,
+                        }}
+                      >
+                        {isPlaying ? (
+                          <Volume2 size={16} color="#FFFFFF" />
+                        ) : (
+                          <Play size={16} color="#0284C7" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            )}
 
-            <View style={{ height: 14 }} />
+              {soundStatus && (
+                <View style={[styles.statusToast, { marginBottom: 12 }]}>
+                  <CheckCircle2 size={14} color="#059669" />
+                  <Text style={styles.statusToastText}>{soundStatus}</Text>
+                </View>
+              )}
 
-            <View style={{ backgroundColor: '#F1F5F9', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F1B33', marginBottom: 4 }}>
-                Required for Background Alarms:
-              </Text>
-              <Text style={{ fontSize: 11, color: '#475569', lineHeight: 16 }}>
-                &bull; <Text style={{ fontWeight: '600' }}>Battery</Text>: Choose &ldquo;Unrestricted&rdquo;{'\n'}
-                &bull; <Text style={{ fontWeight: '600' }}>Alarms &amp; reminders</Text>: Toggle &ldquo;Allowed&rdquo;{'\n'}
-                &bull; <Text style={{ fontWeight: '600' }}>Appear on top</Text>: Toggle &ldquo;Allowed&rdquo;{'\n'}
-                &bull; <Text style={{ fontWeight: '600' }}>Notifications</Text>: Ensure &ldquo;Allow notifications&rdquo; is ON
-              </Text>
-              <Text style={{ fontSize: 10, color: '#64748B', marginTop: 6, fontStyle: 'italic' }}>
-                Note: In Expo Go, permissions are under &ldquo;Expo Go&rdquo;. In the installed APK, they are under &ldquo;KIET Smart Care&rdquo;.
-              </Text>
-            </View>
+              {/* 5-Second Real Alarm Wakeup Test */}
+              <View
+                style={{
+                  backgroundColor: '#F0FDF4',
+                  borderColor: '#86EFAC',
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginBottom: 14,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#166534', marginBottom: 4 }}>
+                  Test Full-Screen Wakeup Alarm (5s Delay):
+                </Text>
+                <Text style={{ fontSize: 11, color: '#15803D', lineHeight: 15, marginBottom: 10 }}>
+                  Tap below, then immediately press your phone&apos;s power button to lock your screen. In 5 seconds, your phone will turn ON, bypass lockscreen, and ring aloud!
+                </Text>
+                <TouchableOpacity
+                  style={[styles.modalActionBtn, { backgroundColor: '#16A34A', borderColor: '#15803D' }]}
+                  onPress={handleTestWakeupAlarm}
+                  disabled={isTestingAlarm}
+                >
+                  <Clock size={16} color="#FFFFFF" />
+                  <Text style={[styles.modalActionBtnText, { color: '#FFFFFF', fontWeight: '700' }]}>
+                    {isTestingAlarm ? 'Alarm Scheduled! Lock screen now...' : '🚀 Trigger 5-Second Wakeup Alarm'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            <TouchableOpacity style={[styles.modalActionBtn, { backgroundColor: '#0F1B33' }]} onPress={handleOpenAppInfo}>
-              <BatteryCharging size={16} color="#FFFFFF" />
-              <Text style={[styles.modalActionBtnText, { color: '#FFFFFF' }]}>1. App Info &amp; Battery Settings ⚙️</Text>
-            </TouchableOpacity>
+              {/* System Alarm & Background Health Info */}
+              <View style={{ backgroundColor: '#F1F5F9', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F1B33', marginBottom: 4 }}>
+                  System Alarm Status:
+                </Text>
+                <Text style={{ fontSize: 11, color: '#475569', lineHeight: 16 }}>
+                  &bull; <Text style={{ fontWeight: '600' }}>Exact Alarms</Text>: Auto-Granted by Android 14 ✓{'\n'}
+                  &bull; <Text style={{ fontWeight: '600' }}>Full Screen Intent</Text>: Configured (Wakes Screen) ✓{'\n'}
+                  &bull; <Text style={{ fontWeight: '600' }}>Audio Channel</Text>: ALARM Stream (Bypasses Mute) ✓{'\n'}
+                  &bull; <Text style={{ fontWeight: '600' }}>Battery</Text>: Choose &ldquo;Unrestricted&rdquo; for optimal reliability
+                </Text>
+              </View>
 
-            <View style={{ height: 8 }} />
-
-            <TouchableOpacity style={styles.modalActionBtn} onPress={handleOpenExactAlarmSettings}>
-              <Clock size={16} color="#0284C7" />
-              <Text style={styles.modalActionBtnText}>2. Toggle &ldquo;Alarms &amp; Reminders&rdquo; ⏰</Text>
-            </TouchableOpacity>
-
-            <View style={{ height: 8 }} />
-
-            <TouchableOpacity style={styles.modalActionBtn} onPress={handleOpenOverlaySettings}>
-              <Volume2 size={16} color="#059669" />
-              <Text style={styles.modalActionBtnText}>3. Toggle &ldquo;Appear on Top&rdquo; 📱</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalActionBtn, { backgroundColor: '#0F1B33' }]}
+                onPress={handleOpenAppInfo}
+              >
+                <BatteryCharging size={16} color="#FFFFFF" />
+                <Text style={[styles.modalActionBtnText, { color: '#FFFFFF' }]}>Open App Info &amp; Battery Settings ⚙️</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>

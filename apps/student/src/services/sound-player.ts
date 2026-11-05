@@ -1,15 +1,73 @@
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+export type SoundTheme = 'chime' | 'bell' | 'voice';
+
+export interface SoundOption {
+  id: SoundTheme;
+  title: string;
+  subtitle: string;
+  icon: string;
+  nativeAsset: any;
+  webUrl: string;
+}
+
+export const SOUND_OPTIONS: SoundOption[] = [
+  {
+    id: 'chime',
+    title: 'Crystal Medical Chime',
+    subtitle: 'Crisp, pleasant rising tone (Default medical grade chime)',
+    icon: 'Sparkles',
+    nativeAsset: require('../../assets/sounds/chime_reminder.wav'),
+    webUrl: '/sounds/chime_reminder.mp3',
+  },
+  {
+    id: 'bell',
+    title: 'Gentle Hospital Bell',
+    subtitle: 'Calm harmonic bell with soothing resonance',
+    icon: 'Bell',
+    nativeAsset: require('../../assets/sounds/gentle_bell.wav'),
+    webUrl: '/sounds/gentle_bell.mp3',
+  },
+  {
+    id: 'voice',
+    title: 'Voice Dose Alert',
+    subtitle: 'Direct spoken prompt: "Student, time for your medicine"',
+    icon: 'Mic',
+    nativeAsset: require('../../assets/sounds/voice_dose_reminder.wav'),
+    webUrl: '/sounds/voice_dose_reminder.mp3',
+  },
+];
+
+const SOUND_PREF_KEY = '@kiet_selected_sound_theme';
+
+let currentTheme: SoundTheme = 'chime';
 let soundObject: Audio.Sound | null = null;
+let previewSoundObject: Audio.Sound | null = null;
 let audioContext: AudioContext | null = null;
 let alarmLoopInterval: any = null;
 let currentHtmlAudio: HTMLAudioElement | null = null;
 let isRinging = false;
 
-// Bundled sound asset for native platforms
-const NATIVE_SOUND_ASSET = require('../../assets/sounds/chime_reminder.wav');
+// Initialize saved sound theme from storage
+AsyncStorage.getItem(SOUND_PREF_KEY).then((saved) => {
+  if (saved && (saved === 'chime' || saved === 'bell' || saved === 'voice')) {
+    currentTheme = saved as SoundTheme;
+  }
+}).catch(() => {});
+
+export async function setSelectedSoundTheme(theme: SoundTheme): Promise<void> {
+  currentTheme = theme;
+  try {
+    await AsyncStorage.setItem(SOUND_PREF_KEY, theme);
+  } catch {}
+}
+
+export function getSelectedSoundTheme(): SoundTheme {
+  return currentTheme;
+}
 
 function getAudioContext(): AudioContext | null {
   if (Platform.OS !== 'web') return null;
@@ -49,22 +107,69 @@ async function configureAudioMode(): Promise<void> {
 }
 
 /**
- * Play a single chime pulse (used in preview & repeating in real alarm)
+ * Preview a specific sound theme in Sound Lab
+ */
+export async function previewSound(theme: SoundTheme): Promise<void> {
+  await stopPreviewSound();
+  const option = SOUND_OPTIONS.find((s) => s.id === theme) || SOUND_OPTIONS[0];
+
+  if (Platform.OS !== 'web') {
+    try {
+      await configureAudioMode();
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      const { sound } = await Audio.Sound.createAsync(
+        option.nativeAsset,
+        { shouldPlay: true, isLooping: false, volume: 1.0 }
+      );
+      previewSoundObject = sound;
+      await previewSoundObject.playAsync();
+      return;
+    } catch (err) {
+      console.warn('[SOUND PLAYER] Preview sound failed:', err);
+    }
+    return;
+  }
+
+  // Web preview
+  try {
+    if (typeof window !== 'undefined' && (window as any).Audio) {
+      const a = new (window as any).Audio(option.webUrl);
+      a.volume = 1.0;
+      a.play().catch(() => playAlarmChime());
+    }
+  } catch {
+    playAlarmChime();
+  }
+}
+
+export async function stopPreviewSound(): Promise<void> {
+  if (previewSoundObject) {
+    try {
+      await previewSoundObject.stopAsync();
+      await previewSoundObject.unloadAsync();
+    } catch {}
+    previewSoundObject = null;
+  }
+}
+
+/**
+ * Play a single pulse of the active sound theme
  */
 export async function playAlarmChime(): Promise<void> {
-  // Always trigger physical haptic feedback immediately on native devices
   if (Platform.OS !== 'web') {
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {}
   }
 
-  // --- NATIVE PLATFORM (ANDROID / IOS) ---
+  const option = SOUND_OPTIONS.find((s) => s.id === currentTheme) || SOUND_OPTIONS[0];
+
+  // --- NATIVE PLATFORM ---
   if (Platform.OS !== 'web') {
     try {
       await configureAudioMode();
 
-      // Stop previous instance if exists
       if (soundObject) {
         try {
           await soundObject.stopAsync();
@@ -74,7 +179,7 @@ export async function playAlarmChime(): Promise<void> {
       }
 
       const { sound } = await Audio.Sound.createAsync(
-        NATIVE_SOUND_ASSET,
+        option.nativeAsset,
         { shouldPlay: true, isLooping: false, volume: 1.0 }
       );
       soundObject = sound;
@@ -88,11 +193,10 @@ export async function playAlarmChime(): Promise<void> {
   }
 
   // --- WEB PLATFORM ---
-  // 1. Try playing custom sound asset
   try {
     if (typeof window !== 'undefined') {
       if (!currentHtmlAudio && (window as any).Audio) {
-        currentHtmlAudio = new (window as any).Audio('/sounds/chime_reminder.mp3');
+        currentHtmlAudio = new (window as any).Audio(option.webUrl);
       }
       if (currentHtmlAudio) {
         currentHtmlAudio.currentTime = 0;
@@ -104,56 +208,43 @@ export async function playAlarmChime(): Promise<void> {
         }
       }
     }
-  } catch {
-    // Fallback to Web Audio synthesizer
-  }
+  } catch {}
 
-  // 2. Synthesize crystal-clear harmonic medical bell chime (E5 -> G#5 -> B5)
+  // Synthesizer fallback
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
 
     const now = ctx.currentTime;
-
     const playChimeTone = (freq: number, startOffset: number, duration: number, gainLevel = 0.5) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, now + startOffset);
-
       gain.gain.setValueAtTime(0.0001, now + startOffset);
       gain.gain.exponentialRampToValueAtTime(gainLevel, now + startOffset + 0.04);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + startOffset + duration);
-
       osc.connect(gain);
       gain.connect(ctx.destination);
-
       osc.start(now + startOffset);
       osc.stop(now + startOffset + duration);
     };
 
-    // Medical Chime Sequence: 3 rising tones + 2 chord pulses
-    playChimeTone(659.25, 0.0, 0.7, 0.5);  // E5
-    playChimeTone(830.61, 0.22, 0.7, 0.5); // G#5
-    playChimeTone(987.77, 0.45, 1.1, 0.55); // B5
-
-    // Gentle repeat echo
-    playChimeTone(659.25, 0.9, 0.5, 0.35);
-    playChimeTone(987.77, 1.1, 1.1, 0.4);
-  } catch (synthErr) {
-    console.warn('[SOUND PLAYER] Synthesizer error:', synthErr);
-  }
+    playChimeTone(659.25, 0.0, 0.7, 0.5);
+    playChimeTone(830.61, 0.22, 0.7, 0.5);
+    playChimeTone(987.77, 0.45, 1.1, 0.55);
+  } catch {}
 }
 
 /**
- * Start REAL ALARM: continuous non-stop ringing until dismissed or taken!
+ * Start continuous looping alarm for medicine takeover
  */
 export async function startContinuousAlarm(): Promise<void> {
   if (isRinging) return;
   isRinging = true;
 
-  // On Native, play looping audio directly
+  const option = SOUND_OPTIONS.find((s) => s.id === currentTheme) || SOUND_OPTIONS[0];
+
   if (Platform.OS !== 'web') {
     try {
       await configureAudioMode();
@@ -166,7 +257,7 @@ export async function startContinuousAlarm(): Promise<void> {
       }
 
       const { sound } = await Audio.Sound.createAsync(
-        NATIVE_SOUND_ASSET,
+        option.nativeAsset,
         { shouldPlay: true, isLooping: true, volume: 1.0 }
       );
       soundObject = sound;
@@ -175,7 +266,7 @@ export async function startContinuousAlarm(): Promise<void> {
       await soundObject.playAsync();
       return;
     } catch (e) {
-      console.warn('[SOUND PLAYER] Native continuous alarm error:', e);
+      console.warn('[SOUND PLAYER] Continuous alarm error:', e);
     }
   }
 
@@ -200,14 +291,16 @@ export async function startContinuousAlarm(): Promise<void> {
       return;
     }
     playAlarmChime();
-  }, 1800);
+  }, 2200);
 }
 
 /**
- * Stop alarm immediately (silence ringing)
+ * Stop alarm immediately
  */
 export async function stopAlarm(): Promise<void> {
   isRinging = false;
+
+  await stopPreviewSound();
 
   if (soundObject) {
     try {
