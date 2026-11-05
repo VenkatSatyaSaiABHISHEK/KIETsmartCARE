@@ -13,6 +13,7 @@ export default function PinLoginPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [isCatPeeking, setIsCatPeeking] = useState(false);
 
   const handleSelectRole = (role: UserRole) => {
     setSelectedRole(role);
@@ -69,6 +70,28 @@ export default function PinLoginPage() {
     <div className="relative min-h-screen w-full flex flex-col justify-center items-center bg-[var(--bg)] px-6 py-12">
       {/* Centered Single Column (max-w 400px) */}
       <div className="w-full max-w-[400px] flex flex-col items-center">
+        {/* Top Middle Cat Lottie Animation (Mirrored / Reversed & Curved perspective) */}
+        <div
+          className="relative flex flex-col items-center justify-center -mt-6 mb-1 cursor-pointer select-none group"
+          onClick={() => setIsCatPeeking((prev) => !prev)}
+          title="Click to interact with campus cat"
+        >
+          <div
+            className="w-[180px] h-[120px] overflow-hidden flex items-center justify-center transition-all duration-300 group-hover:scale-105"
+            style={{
+              transform: `scaleX(-1) ${isCatPeeking ? 'rotate(-6deg) translateY(6px)' : 'rotate(-2deg)'}`,
+              filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.04))',
+            }}
+          >
+            <iframe
+              src="https://lottie.host/embed/9e506062-5f1a-4fe1-a03a-df1822b1b1b9/taZABzSbck.lottie"
+              className="w-full h-full border-0 pointer-events-none"
+              style={{ background: 'transparent' }}
+              title="Campus Cat Animation"
+            />
+          </div>
+        </div>
+
         {/* Wordmark top of column */}
         <div className="text-center font-semibold text-[14px] text-[var(--text)] mb-6 select-none">
           KIET Smart Care
