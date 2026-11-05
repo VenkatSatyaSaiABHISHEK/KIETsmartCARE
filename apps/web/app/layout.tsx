@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Source_Serif_4, Inter } from "next/font/google";
+import { Geist, Geist_Mono, Source_Serif_4, Inter, Caveat } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,6 +22,12 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const caveat = Caveat({
+  variable: "--font-cursive",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "KIET Smart Care",
   description: "Campus healthcare monitoring system for KIET Group of Institutions, Ghaziabad",
@@ -33,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} ${inter.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} ${inter.variable} ${caveat.variable}`}>
       <body className="min-h-screen bg-[var(--bg)] font-sans text-[var(--text)] antialiased">
         {children}
       </body>

@@ -103,38 +103,43 @@ export default function PinLoginPage() {
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="w-full flex flex-col items-center"
             >
-              <div className="text-center mb-8">
-                <h1 className="text-[34px] sm:text-[38px] font-semibold leading-none text-black tracking-tight flex items-baseline justify-center gap-2">
-                  <span>Who are</span>
-                  <span className="relative inline-block px-3 py-1">
-                    <span className="relative z-10 font-[family-name:var(--font-serif)] italic font-medium text-[36px] sm:text-[40px] text-black tracking-normal">
+              <div className="text-center mb-9">
+                <h1 className="text-[36px] sm:text-[42px] font-bold leading-none text-black tracking-tight flex items-center justify-center gap-2.5">
+                  <span className="font-[family-name:var(--font-geist)]">Who are</span>
+                  <span className="relative inline-block px-3.5 py-1">
+                    <span className="relative z-10 font-[family-name:var(--font-cursive)] font-bold text-[46px] sm:text-[54px] text-black tracking-wide -rotate-1 inline-block select-none">
                       you?
                     </span>
                     <svg
-                      viewBox="0 0 160 70"
+                      viewBox="0 0 170 76"
                       fill="none"
                       xmlns="http://www.w3.org/2000/svg"
-                      className="absolute -inset-x-3 -inset-y-2.5 w-[calc(100%+24px)] h-[calc(100%+20px)] pointer-events-none overflow-visible"
+                      className="absolute -inset-x-3.5 -inset-y-3 w-[calc(100%+28px)] h-[calc(100%+24px)] pointer-events-none overflow-visible"
                     >
-                      {/* Organic hand-drawn sketch loop circling "you?" */}
+                      {/* Perpetual non-stop animated sketch loop */}
                       <motion.path
-                        d="M 28,38 C 16,16 48,6 90,8 C 136,9 162,18 156,38 C 149,58 102,66 50,64 C 20,62 8,50 26,32 C 38,20 66,16 96,18"
+                        d="M 30,42 C 16,18 52,6 96,8 C 144,9 170,20 164,42 C 156,64 108,72 52,70 C 20,68 8,54 28,34 C 42,20 72,16 104,18"
                         stroke="#000000"
-                        strokeWidth="2.4"
+                        strokeWidth="2.6"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 0.95 }}
+                        animate={{
+                          pathLength: [0, 1, 1, 0],
+                          opacity: [0, 1, 1, 0],
+                        }}
                         transition={{
-                          duration: 1.1,
-                          ease: [0.16, 1, 0.3, 1],
-                          delay: 0.15,
+                          duration: 3.2,
+                          times: [0, 0.45, 0.85, 1],
+                          ease: "easeInOut",
+                          repeat: Infinity,
+                          repeatDelay: 0.3,
                         }}
                       />
                     </svg>
                   </span>
                 </h1>
-                <p className="mt-3 text-[14px] text-black/50 font-normal">
+                <p className="mt-3.5 text-[14px] text-black/50 font-normal">
                   Select your role to continue.
                 </p>
               </div>
