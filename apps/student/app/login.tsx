@@ -15,6 +15,8 @@ import {
 import { useRouter } from 'expo-router';
 import { KeyRound, ShieldCheck, CheckCircle2, X } from 'lucide-react-native';
 import { AuthService } from '../src/services/auth';
+import { ReminderEngine } from '../src/services/reminder-engine';
+import { enableAudioAndNotifications } from '../src/services/sound-player';
 import { WobnimoMascot, WobnimoState } from '../src/components/WobnimoMascot';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
@@ -119,6 +121,12 @@ export default function LoginScreen() {
         password === 'welcome' ||
         result.session?.is_first_login;
 
+      // Automatically initialize reminders & prompt native notification permissions on login
+      try {
+        await ReminderEngine.init();
+        await enableAudioAndNotifications();
+      } catch {}
+
       if (isInitialPass) {
         setIsFirstLoginChange(true);
       } else if (!result.session?.has_consented) {
@@ -148,6 +156,10 @@ export default function LoginScreen() {
     try {
       const res = await AuthService.changePassword(newPassword);
       if (res.success) {
+        try {
+          await ReminderEngine.init();
+          await enableAudioAndNotifications();
+        } catch {}
         router.replace('/consent');
       } else {
         setErrorMessage(res.error || 'Failed to update password.');

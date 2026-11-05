@@ -20,15 +20,15 @@ if (Platform.OS !== 'web') {
   });
 }
 
-// Android channel configuration
-const ANDROID_CHANNEL_ID = 'kiet_alarm_channel_v5';
+// Android channel configuration - bumped to v9 to force Android OS to create fresh ALARM-stream channel
+export const ANDROID_CHANNEL_ID = 'kiet_medicine_alarm_v9';
 export const DOSE_NOTIFICATION_CATEGORY = 'DOSE_REMINDER_ACTIONS';
 
 export class ReminderEngine {
   private static isInitialized = false;
 
   /**
-   * Initialize notification channels (High-importance Android channel with custom chime sound & full alarm privileges)
+   * Initialize notification channels (High-importance Android channel with custom chime sound & ALARM stream privileges)
    */
   static async init(): Promise<boolean> {
     if (this.isInitialized) return true;
@@ -40,11 +40,27 @@ export class ReminderEngine {
 
     try {
       if (Platform.OS === 'android') {
+        // Delete deprecated channels so system resets properly
+        const oldChannels = [
+          'kiet_alarm_channel_v1',
+          'kiet_alarm_channel_v2',
+          'kiet_alarm_channel_v3',
+          'kiet_alarm_channel_v4',
+          'kiet_alarm_channel_v5',
+          'kiet_medicine_alarm_v8',
+        ];
+        for (const oldCh of oldChannels) {
+          try {
+            await Notifications.deleteNotificationChannelAsync(oldCh);
+          } catch {}
+        }
+
+        // Configure high-priority alarm channel bypassing silent/vibrate when user needs medicine
         await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
           name: 'KIET Medicine Alarms',
           description: 'High-importance campus healthcare dose reminders that ring with sound and vibration',
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 500, 250, 500, 250, 800],
+          vibrationPattern: [0, 600, 300, 600, 300, 1000],
           lightColor: '#0284C7',
           sound: 'chime_reminder',
           audioAttributes: {
@@ -111,8 +127,7 @@ export class ReminderEngine {
   }
 
   /**
-   * Sync schedule and rebuild ALL local scheduled notifications.
-   * Formats professional headline and message matching data rules:
+   * Sync schedule and rebuild ALL local scheduled notifications with unique identifiers (zero duplicates).
    * Title: "{firstName}, time for your medicine."
    * Body: "{mealRelation} {mealSlot}: Tablet 1 (2 tablets)"
    */
@@ -187,15 +202,16 @@ export class ReminderEngine {
         .map((d) => `${d.medicine_name || 'Tablet'} (${d.tablets ? `${d.tablets} tablets` : d.dose || '1 tablet'})`)
         .join(', ');
 
-      // Professional Clean Notification Format
       const notificationTitle = `${firstName}, time for your medicine`;
       const notificationBody = `${group.relationStr} ${group.mealStr}: ${medListStr}`;
 
       const primaryDoseId = group.doses[0].id;
       const allDoseIds = group.doses.map((d) => d.id);
+      const uniqueNotifId = `kiet_dose_${group.triggerDate.getTime()}`;
 
       try {
         await Notifications.scheduleNotificationAsync({
+          identifier: uniqueNotifId,
           content: {
             title: notificationTitle,
             body: notificationBody,
@@ -207,6 +223,7 @@ export class ReminderEngine {
               type: 'PRIMARY_REMINDER',
             },
             priority: Notifications.AndroidNotificationPriority.MAX,
+            vibrate: [0, 600, 300, 600, 300, 1000],
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -302,6 +319,7 @@ export class ReminderEngine {
     try {
       const triggerDate = new Date(Date.now() + secondsDelay * 1000);
       await Notifications.scheduleNotificationAsync({
+        identifier: `kiet_test_${triggerDate.getTime()}`,
         content: {
           title: `${firstName}, time for your medicine`,
           body: 'After food: Tablet 1 (1 tablet)',
@@ -312,8 +330,10 @@ export class ReminderEngine {
             type: 'TEST_ALARM',
           },
           priority: Notifications.AndroidNotificationPriority.MAX,
+          vibrate: [0, 600, 300, 600, 300, 1000],
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: triggerDate,
           channelId: ANDROID_CHANNEL_ID,
         },

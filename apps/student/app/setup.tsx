@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { ReminderEngine } from '../src/services/reminder-engine';
 import { StudentApi } from '../src/services/student-api';
 import { AuthService } from '../src/services/auth';
+import { enableAudioAndNotifications } from '../src/services/sound-player';
 
 export default function SetupScreen() {
   const router = useRouter();
@@ -25,9 +26,13 @@ export default function SetupScreen() {
     setIsSubmitting(true);
     try {
       await ReminderEngine.init();
+      await enableAudioAndNotifications();
       await StudentApi.updateMealTimes({ breakfast, lunch, dinner });
-      const doses = await StudentApi.getDoses();
-      await ReminderEngine.syncAndScheduleAll(doses, { breakfast, lunch, dinner });
+      const [doses, prof] = await Promise.all([
+        StudentApi.getDoses(),
+        StudentApi.getProfile().catch(() => null),
+      ]);
+      await ReminderEngine.syncAndScheduleAll(doses, { breakfast, lunch, dinner }, prof);
       await AuthService.setSetupCompleted();
       router.replace('/(tabs)');
     } finally {

@@ -15,6 +15,7 @@ import { RecoveryCard } from '../../src/components/RecoveryCard';
 import { TodayTimeline } from '../../src/components/TodayTimeline';
 import { HomeSkeletonLoader } from '../../src/components/SkeletonLoader';
 import { AlarmTakeoverModal } from '../../src/components/AlarmTakeoverModal';
+import * as Notifications from 'expo-notifications';
 import { StudentApi } from '../../src/services/student-api';
 import { ReminderEngine } from '../../src/services/reminder-engine';
 import {
@@ -120,6 +121,41 @@ export default function StudentHomeScreen() {
       if (res?.dList) checkDueAlarms(res.dList);
     });
 
+    // Handle user tapping notifications or interactive action buttons from lock screen / notification drawer
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      const targetDoseId = data?.doseId as string | undefined;
+      const actionId = response.actionIdentifier;
+
+      if (actionId === 'taken' && targetDoseId) {
+        handleAnswerDose(targetDoseId, 'taken');
+      } else if (actionId === 'taken_late' && targetDoseId) {
+        handleAnswerDose(targetDoseId, 'taken_late');
+      } else if (actionId === 'not_taken' && targetDoseId) {
+        handleAnswerDose(targetDoseId, 'not_taken');
+      } else {
+        // Tapped directly on notification banner -> Immediately show full takeover alarm modal
+        const targetDose =
+          dosesRef.current.find((d) => d.id === targetDoseId) ||
+          dosesRef.current.find((d) => d.status === 'scheduled' || d.status === 'unconfirmed') ||
+          dosesRef.current[0];
+        if (targetDose) {
+          setActiveAlarmDose(targetDose);
+          startContinuousAlarm();
+        }
+      }
+    });
+
+    // Handle foreground arrival of scheduled alarm notification
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      const targetDoseId = notification.request.content.data?.doseId as string | undefined;
+      const targetDose = dosesRef.current.find((d) => d.id === targetDoseId);
+      if (targetDose && (targetDose.status === 'scheduled' || targetDose.status === 'unconfirmed')) {
+        setActiveAlarmDose(targetDose);
+        startContinuousAlarm();
+      }
+    });
+
     // 1. High-precision 1-second clock: checks current second against target alarm time with ZERO lag
     const clockInterval = setInterval(() => {
       checkDueAlarms(dosesRef.current);
@@ -146,6 +182,8 @@ export default function StudentHomeScreen() {
     }, 2500);
 
     return () => {
+      responseSub.remove();
+      receivedSub.remove();
       clearInterval(clockInterval);
       clearInterval(pollInterval);
     };
@@ -156,8 +194,8 @@ export default function StudentHomeScreen() {
     try {
       const res = await loadStudentData(true);
       if (res?.dList) checkDueAlarms(res.dList);
-      if (res?.prof) {
-        await ReminderEngine.syncAndScheduleAll(res.dList, res.prof.meal_times);
+      if (res?.prof && res?.dList) {
+        await ReminderEngine.syncAndScheduleAll(res.dList, res.prof.meal_times, res.prof);
       }
     } finally {
       setIsRefreshing(false);
