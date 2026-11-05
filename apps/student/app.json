@@ -42,7 +42,6 @@
     },
     "plugins": [
       "./plugins/withAndroidAlarms.js",
-      "@notifee/react-native",
       "expo-router",
       [
         "expo-notifications",
